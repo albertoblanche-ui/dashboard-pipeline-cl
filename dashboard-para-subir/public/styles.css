@@ -1,0 +1,75 @@
+:root {
+  --plano: #f9f9f7;
+  --superficie: #fcfcfb;
+  --superficie-2: #f0efec;
+  --borde: #e2e1dc;
+  --tinta: #0b0b0b;
+  --tinta-2: #52514e;
+  --tinta-3: #7a7974;
+  --azul: #2a78d6;
+  --azul-suave: #cde2fb;
+  --bien: #0ca30c;
+  --aviso: #fab219;
+  --serio: #ec835a;
+  --critico: #d03b3b;
+  --critico-texto: #b42f2f;
+  --radio: 10px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --plano: #0d0d0d;
+    --superficie: #1a1a19;
+    --superficie-2: #262624;
+    --borde: #383835;
+    --tinta: #f0efec;
+    --tinta-2: #c3c2b7;
+    --tinta-3: #8f8e86;
+    --azul: #3987e5;
+    --azul-suave: #184f95;
+    --critico-texto: #e66767;
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --plano: #0d0d0d;
+  --superficie: #1a1a19;
+  --superficie-2: #262624;
+  --borde: #383835;
+  --tinta: #f0efec;
+  --tinta-2: #c3c2b7;
+  --tinta-3: #8f8e86;
+  --azul: #3987e5;
+  --azul-suave: #184f95;
+  --critico-texto: #e66767;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--plano);
+  color: var(--tinta);
+  font: 14px/1.45 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+a { color: inherit; }
+h1, h2, h3 { margin: 0; font-weight: 650; letter-spacing: -0.01em; }
+.muted { color: var(--tinta-2); }
+.tenue { color: var(--tinta-3); }
+
+.chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: 999px; font-size: 12px; white-space: nowrap;
+  background: var(--superficie-2); color: var(--tinta-2); border: 1px solid var(--borde);
+}
+.chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--tinta-3); }
+.chip.critico::before { background: var(--critico); }
+.chip.serio::before { background: var(--serio); }
+.chip.aviso::before { background: var(--aviso); }
+.chip.bien::before { background: var(--bien); }
+.chip.sin-punto::before { display: none; }
+.chip.critico { color: var(--critico-texto); font-weight: 600; }
+
+.barra { height: 8px; background: var(--superficie-2); border-radius: 999px; overflow: hidden; }
+.barra > span { display: block; height: 100%; background: var(--azul); border-radius: 999px; }
