@@ -1,3 +1,4 @@
+// lib/dashboard.js
 // Convierte los datos crudos de Attio en lo que muestran la torre de control y la TV.
 import {
   ATTIO, CLP_POR_USD, DIAS_PELOTA_CLIENTE, DIAS_SIN_ACTIVIDAD, ETAPAS, ETAPAS_CERRADAS,
@@ -12,8 +13,6 @@ const texto = (d, slug) => valor(d, slug)?.value ?? null;
 const titulo = (v) => v?.status?.title ?? v?.option?.title ?? null;
 const dias = (desde, hasta) => Math.floor((hasta - new Date(desde)) / DIA);
 
-// Busca fechas escritas en el next step ("lun 19-oct", "2-nov", "20/10") y devuelve la primera
-// que no sea anterior al día en que se escribió el next step.
 export function fechaEnTexto(txt, escritoEn, ahora) {
   if (!txt) return null;
   const fechas = [];
@@ -32,7 +31,6 @@ export function fechaEnTexto(txt, escritoEn, ahora) {
   return fechas.find((f) => f >= base) ?? fechas[fechas.length - 1];
 }
 
-// Si el next step solo espera algo del cliente, la pelota está en el cliente.
 export function pelotaPorTexto(txt) {
   if (!txt) return null;
   const primero = txt.split(/[.·\n]/)[0];
@@ -104,132 +102,6 @@ export function construirDashboard(raw, ahora = new Date()) {
       if ((d.values?.closed_lost_reason ?? []).length) problemas.push('Closed lost reason en deal abierto');
     }
 
-    // Prioridad: plata en juego × probabilidad × urgencia.
-    const prob = info?.prob ?? 0;
-    let urgencia = 1;
-    if (vencido) urgencia += pelota === 'Cliente' ? 0.5 : 1.5;
-    if (estancado) urgencia += 1;
-    if (mustWin) urgencia += 1;
-    if (firmaEsperada && firmaEsperada <= META_FECHA) urgencia += 0.5;
-    if (!nextStep) urgencia += 1;
-    urgencia += Math.min(diasInactivo / DIAS_SIN_ACTIVIDAD, 2) * 0.5;
-    const prioridad = abierto ? arrUsd * Math.max(prob, 0.05) * urgencia : 0;
-
     const movimientos = hist
       .slice(1)
-      .map((v, i) => ({ de: titulo(hist[i]), a: titulo(v), fecha: v.active_from, por: miembro[v.created_by_actor?.id]?.corto ?? null }))
-      .filter((m) => new Date(m.fecha) >= semanaAtras);
-
-    return {
-      id,
-      nombre,
-      cuenta: nombre.split(' - ')[0],
-      url: `https://app.attio.com/telepatia-ai/custom/opportunities/record/${id}`,
-      etapa,
-      ordenEtapa: info?.orden ?? (ETAPAS_CERRADAS.includes(etapa) ? 99 : 98),
-      abierto,
-      firmado: ETAPAS_FIRMADAS.includes(etapa),
-      perdido: etapa === 'Closed lost',
-      arrUsd: Math.round(arrUsd),
-      arrEstimado: arrUsdAttio === 0 && arrClp > 0,
-      ponderadoUsd: Math.round(arrUsd * prob),
-      firmaEsperada,
-      firma2026: Boolean(firmaEsperada && firmaEsperada <= META_FECHA),
-      owner: miembro[ownerId]?.corto ?? null,
-      responsable: miembro[responsableId]?.corto ?? null,
-      responsableNombre: miembro[responsableId]?.nombre ?? null,
-      nextStep,
-      fechaNextStep: fechaNS?.toISOString().slice(0, 10) ?? null,
-      fechaNextStepLeidaDelTexto: Boolean(!fechaCampo && fechaNS),
-      pelota,
-      pelotaPorTexto: !titulo(valor(d, c.pelotaEn)) && Boolean(pelota),
-      vencido,
-      diasEtapa,
-      diasInactivo,
-      limiteEtapa: info?.estancado ?? null,
-      estancado,
-      candidatoPerdido,
-      mustWin,
-      tgp: deTGP.has(id),
-      problemas,
-      prioridad: Math.round(prioridad),
-      movimientos,
-      primeraReunion: texto(d, 'first_meeting_date'),
-      creado: d.created_at,
-    };
-  });
-
-  const abiertos = deals.filter((d) => d.abierto);
-  const firmados = deals.filter((d) => d.firmado);
-  const suma = (xs, k) => xs.reduce((a, d) => a + d[k], 0);
-
-  const funnel = ETAPAS.map((e) => {
-    const xs = deals.filter((d) => d.etapa === e.nombre);
-    return { etapa: e.nombre, deals: xs.length, arrUsd: suma(xs, 'arrUsd'), ponderadoUsd: suma(xs, 'ponderadoUsd'), estancados: xs.filter((d) => d.estancado).length };
-  });
-
-  const arrFirmado = suma(firmados, 'arrUsd');
-  const diasAlCierre = Math.max(0, Math.ceil((new Date(META_FECHA + 'T23:59:59-03:00') - ahora) / DIA));
-  const falta = Math.max(0, META_ARR_USD - arrFirmado);
-
-  // Tareas de Attio del equipo, ligadas al deal cuando corresponde.
-  const porId = Object.fromEntries(deals.map((d) => [d.id, d]));
-  const vistas = new Set();
-  const tareas = raw.tareas
-    .filter((t) => !vistas.has(t.id.task_id) && vistas.add(t.id.task_id))
-    .map((t) => {
-      const deal = t.linked_records.map((l) => porId[l.target_record_id]).find(Boolean);
-      return {
-        id: t.id.task_id,
-        texto: t.content_plaintext,
-        vence: t.deadline_at?.slice(0, 10) ?? null,
-        vencida: t.deadline_at ? new Date(t.deadline_at) < ahora : false,
-        asignados: t.assignees.map((a) => miembro[a.referenced_actor_id]?.corto).filter(Boolean),
-        deal: deal ? { id: deal.id, cuenta: deal.cuenta, url: deal.url } : null,
-      };
-    })
-    .sort((a, b) => (a.vence ?? '9999').localeCompare(b.vence ?? '9999'));
-
-  const personas = raw.equipo.map((p) => {
-    const suyos = abiertos.filter((d) => d.responsable === p.corto && d.nextStep);
-    return {
-      corto: p.corto,
-      nombre: p.nombre,
-      avatar: p.avatar,
-      nosToca: suyos.filter((d) => d.pelota !== 'Cliente').sort((a, b) => (a.fechaNextStep ?? '9').localeCompare(b.fechaNextStep ?? '9')),
-      esperandoCliente: suyos.filter((d) => d.pelota === 'Cliente').sort((a, b) => b.diasInactivo - a.diasInactivo),
-      tareas: tareas.filter((t) => t.asignados.includes(p.corto)),
-      vencidos: suyos.filter((d) => d.vencido).length + tareas.filter((t) => t.asignados.includes(p.corto) && t.vencida).length,
-    };
-  });
-
-  const movimientosSemana = deals
-    .flatMap((d) => d.movimientos.map((m) => ({ ...m, cuenta: d.cuenta, arrUsd: d.arrUsd, url: d.url })))
-    .sort((a, b) => b.fecha.localeCompare(a.fecha));
-
-  return {
-    actualizado: raw.leidoEn,
-    meta: {
-      metaUsd: META_ARR_USD,
-      arrFirmadoUsd: arrFirmado,
-      arrEnVivoUsd: suma(deals.filter((d) => d.etapa === 'Ready for use 🎉'), 'arrUsd'),
-      avance: arrFirmado / META_ARR_USD,
-      faltaUsd: falta,
-      diasAlCierre,
-      ritmoSemanalUsd: Math.round(falta / Math.max(1, diasAlCierre / 7)),
-      ponderado2026Usd: suma(abiertos.filter((d) => d.firma2026), 'ponderadoUsd'),
-      pipelineAbiertoUsd: suma(abiertos, 'arrUsd'),
-      dealsAbiertos: abiertos.length,
-      firmados: firmados.map((d) => ({ id: d.id, cuenta: d.cuenta, arrUsd: d.arrUsd, etapa: d.etapa })),
-    },
-    funnel,
-    mustWin: deals.filter((d) => d.mustWin && !d.perdido).sort((a, b) => b.arrUsd - a.arrUsd),
-    cola: abiertos.filter((d) => d.prioridad > 0).sort((a, b) => b.prioridad - a.prioridad),
-    higiene: abiertos.filter((d) => d.problemas.length).sort((a, b) => b.arrUsd - a.arrUsd),
-    candidatosPerdido: abiertos.filter((d) => d.candidatoPerdido).sort((a, b) => b.diasEtapa - a.diasEtapa),
-    personas,
-    movimientosSemana,
-    pelotaClienteDias: DIAS_PELOTA_CLIENTE,
-    deals,
-  };
-}
+      .map((v, i) => ({ de: titulo(hist[i]), a: titulo(v), fecha: v.active_from, por: miembro[v.created_by_actor?.id]?.
