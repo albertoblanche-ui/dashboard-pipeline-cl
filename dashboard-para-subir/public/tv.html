@@ -6,71 +6,85 @@
 <title>Pipeline Chile TV</title>
 <link rel="stylesheet" href="/styles.css">
 <style>
-  html, body { height: 100%; overflow: hidden; }
+  html, body { height: 100%; overflow: hidden; background: #0b0c0e; color: #f8fafc; }
   body { font-size: clamp(14px, 1.15vw, 22px); }
-  .tv { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 2.2vw 3vw 1.4vw; gap: 1.6vw; }
-  .arriba { display: flex; justify-content: space-between; align-items: baseline; }
-  .arriba h1 { font-size: 1.6em; }
-  .reloj { font-size: 1.6em; font-weight: 600; color: var(--tinta-2); }
-  .pantalla { display: none; min-height: 0; }
+  .tv { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 2vw 3vw 1.5vw; gap: 1.5vw; }
+  
+  /* Cabecera */
+  .arriba { display: flex; justify-content: space-between; align-items: center; }
+  .arriba h1 { font-size: 1.6em; font-weight: 700; color: #f8fafc; }
+  .arriba-derecha { display: flex; align-items: center; gap: 1.5em; }
+  .reloj { font-size: 1.5em; font-weight: 600; color: var(--tinta-2); }
+  .volver-btn {
+    font-size: 0.85em; text-decoration: none; padding: 6px 14px; border-radius: 8px;
+    background: var(--superficie-2); color: var(--tinta-2); border: 1px solid var(--borde);
+    transition: all 0.2s;
+  }
+  .volver-btn:hover { color: #fff; border-color: var(--azul); }
+
+  /* Contenedor de Pantallas */
   #pantallas { min-height: 0; }
-  .pantalla.activa { display: grid; height: 100%; animation: entrar .6s ease; }
+  .pantalla { display: none; min-height: 0; height: 100%; animation: entrar .6s ease; }
+  .pantalla.activa { display: grid; }
   @keyframes entrar { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* Barra inferior */
   .abajo { display: flex; justify-content: space-between; align-items: center; color: var(--tinta-3); font-size: .85em; }
   .puntos { display: flex; gap: 8px; }
   .puntos span { width: 10px; height: 10px; border-radius: 50%; background: var(--borde); }
-  .puntos span.on { background: var(--tinta-2); }
+  .puntos span.on { background: var(--azul); transform: scale(1.2); }
 
-  /* A · Meta */
-  .meta { grid-template-columns: 1.4fr 1fr; gap: 3vw; align-content: center; }
-  .grande .etq { font-size: 1.3em; color: var(--tinta-2); }
-  .grande .num { font-size: 7.5em; font-weight: 700; letter-spacing: -0.04em; line-height: 1; margin: .1em 0 .25em; }
-  .grande .barra { height: 2.2vw; }
-  .grande .pct { display: flex; justify-content: space-between; margin-top: .6em; font-size: 1.4em; color: var(--tinta-2); }
-  .grande .pct strong { color: var(--tinta); }
-  .tiles { display: grid; gap: 1.2vw; align-content: center; }
-  .tile { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 1.2vw 1.6vw; }
-  .tile .etq { color: var(--tinta-2); font-size: 1em; }
-  .tile .num { font-size: 2.8em; font-weight: 650; letter-spacing: -0.02em; }
-  .tile .sub { color: var(--tinta-3); font-size: .9em; }
+  /* PANTALLA 1: META LIMPIA */
+  .meta-limpia { place-content: center; text-align: center; max-width: 900px; margin: 0 auto; gap: 2vw; }
+  .meta-limpia .etq { font-size: 1.8em; color: var(--tinta-2); text-transform: uppercase; letter-spacing: 0.05em; }
+  .meta-limpia .num { font-size: 8.5em; font-weight: 800; letter-spacing: -0.04em; line-height: 1; color: #fff; margin: .1em 0; }
+  .meta-limpia .barra { height: 2.2vw; background: var(--superficie-2); border-radius: 999px; overflow: hidden; }
+  .meta-limpia .barra > span { display: block; height: 100%; background: var(--azul); border-radius: 999px; }
+  .meta-limpia .pct { display: flex; justify-content: space-between; margin-top: .8em; font-size: 1.6em; color: var(--tinta-2); }
+  .meta-limpia .pct strong { color: #fff; }
 
-  /* B · Camino */
-  .camino { grid-template-columns: 1.3fr 1fr; gap: 3vw; min-height: 0; }
-  h2.sec { font-size: 1.3em; margin-bottom: .8em; color: var(--tinta-2); font-weight: 600; }
-  .mws { display: grid; gap: 1vw; }
-  .mw { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 1vw 1.4vw; display: grid; gap: .4em; }
-  .mw.firmado { border-color: var(--bien); }
-  .mw .top { display: flex; justify-content: space-between; gap: 1em; align-items: baseline; }
-  .mw .nombre { font-size: 1.5em; font-weight: 650; }
-  .mw .monto { font-size: 1.5em; font-weight: 650; }
-  .mw .ns { color: var(--tinta-2); display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
-  .chip { font-size: .85em; padding: .1em .7em; }
-  .fun { display: grid; gap: .9vw; }
-  .fn { display: grid; grid-template-columns: 9em 1fr 7.5em; gap: 1em; align-items: center; font-size: 1.05em; }
-  .fn .barra { height: 1.8vw; border-radius: 6px; }
-  .fn .barra > span { border-radius: 0 6px 6px 0; }
-  .fn .n { text-align: right; }
+  /* PANTALLA 2: KANBAN MACRO (CARRERA) */
+  .carrera { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1vw; min-height: 0; overflow: hidden; }
+  .col-carrera {
+    background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px;
+    padding: 1vw; display: flex; flex-direction: column; gap: 0.8vw; min-height: 0;
+  }
+  .col-cab { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--borde); padding-bottom: 0.5vw; }
+  .col-cab h3 { font-size: 1.1em; color: var(--tinta-2); margin: 0; }
+  .col-cab .monto { font-size: 1.1em; font-weight: 700; color: var(--azul); }
+  .deals-lista { display: flex; flex-direction: column; gap: 0.6vw; overflow: hidden; }
+  .card-tv {
+    background: var(--superficie-2); border: 1px solid var(--borde); border-radius: 8px;
+    padding: 0.8vw; display: flex; flex-direction: column; gap: 0.4vw; position: relative;
+  }
+  .card-tv.movido { border-left: 5px solid var(--bien); }
+  .card-tv .top { display: flex; justify-content: space-between; align-items: baseline; }
+  .card-tv .nombre { font-size: 1.1em; font-weight: 700; }
+  .card-tv .arr { font-size: 1.05em; font-weight: 700; color: var(--azul); }
+  .card-tv .sub { display: flex; justify-content: space-between; align-items: center; font-size: 0.8em; color: var(--tinta-3); }
 
-  /* C · Lo que nos toca */
-  .toca { grid-template-columns: repeat(4, 1fr); gap: 1.4vw; min-height: 0; }
-  .col { background: var(--superficie); border: 1px solid var(--borde); border-radius: 14px; padding: 1.2vw; display: grid; grid-template-rows: auto 1fr; gap: 1vw; min-height: 0; overflow: hidden; }
-  .col .cab { display: flex; align-items: center; gap: .7em; }
-  .col img, .col .avatar { width: 2.6em; height: 2.6em; border-radius: 50%; background: var(--superficie-2); display: grid; place-items: center; font-weight: 700; }
-  .col h3 { font-size: 1.4em; }
-  .col .venc { color: var(--critico-texto); font-weight: 650; }
-  .col ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .8em; align-content: start; }
-  .col li { display: grid; gap: .2em; }
-  .col li .cuenta { font-weight: 600; font-size: 1.05em; }
-  .col li .txt { color: var(--tinta-2); font-size: .85em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  /* PANTALLA 3: LO QUE NOS TOCA (TEXTO COMPLETO) */
+  .toca { grid-template-columns: repeat(4, 1fr); gap: 1.2vw; min-height: 0; }
+  .col-toca {
+    background: var(--superficie); border: 1px solid var(--borde); border-radius: 12px;
+    padding: 1.2vw; display: flex; flex-direction: column; gap: 1vw; min-height: 0; overflow: hidden;
+  }
+  .col-toca .cab { display: flex; align-items: center; gap: .7em; }
+  .col-toca .avatar { width: 2.4em; height: 2.4em; border-radius: 50%; background: var(--superficie-2); display: grid; place-items: center; font-weight: 700; }
+  .col-toca h3 { font-size: 1.3em; margin: 0; }
+  .col-toca ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1vw; overflow-y: auto; }
+  .col-toca li { display: flex; flex-direction: column; gap: 0.3em; background: var(--superficie-2); padding: 0.8vw; border-radius: 8px; }
+  .col-toca .cuenta { font-weight: 700; font-size: 1.05em; }
+  .col-toca .txt { color: var(--tinta-2); font-size: 0.9em; line-height: 1.4; word-break: break-word; } /* Texto completo sin clamp */
 
   /* Celebración */
-  #fiesta { position: fixed; inset: 0; display: none; place-items: center; z-index: 10; background: rgba(13,13,13,.86); }
+  #fiesta { position: fixed; inset: 0; display: none; place-items: center; z-index: 10; background: rgba(11,12,14,.92); }
   #fiesta.on { display: grid; }
   #fiesta canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
   #fiesta .msg { position: relative; text-align: center; animation: latido 1.2s ease-in-out infinite; }
   #fiesta .msg .t1 { font-size: 3em; color: var(--tinta-2); }
-  #fiesta .msg .t2 { font-size: 8em; font-weight: 800; letter-spacing: -0.03em; line-height: 1.05; }
-  #fiesta .msg .t3 { font-size: 3.4em; font-weight: 700; color: var(--bien); }
+  #fiesta .msg .t2 { font-size: 7em; font-weight: 800; line-height: 1.05; }
+  #fiesta .msg .t3 { font-size: 3em; font-weight: 700; color: var(--bien); }
   @keyframes latido { 50% { transform: scale(1.04); } }
   #error { position: fixed; bottom: 1vw; right: 1vw; background: var(--superficie); border: 1px solid var(--critico); padding: .6em 1em; border-radius: 8px; display: none; }
   .cargando { display: grid; place-items: center; font-size: 1.6em; color: var(--tinta-2); }
@@ -78,67 +92,102 @@
 </head>
 <body>
 <div class="tv">
-  <div class="arriba"><h1>Pipeline Chile · Camino al millón</h1><span class="reloj" id="reloj"></span></div>
+  <div class="arriba">
+    <h1>Pipeline Chile · Camino al millón</h1>
+    <div class="arriba-derecha">
+      <span class="reloj" id="reloj"></span>
+      <a href="/" class="volver-btn">← Torre de control</a>
+    </div>
+  </div>
   <div id="pantallas" class="cargando">Leyendo Attio…</div>
-  <div class="abajo"><span id="actualizado"></span><div class="puntos" id="puntos"></div><span>Vidas salvadas: pendiente (Critical Saving Alerts)</span></div>
+  <div class="abajo">
+    <span id="actualizado"></span>
+    <div class="puntos" id="puntos"></div>
+  </div>
 </div>
+
 <div id="fiesta"><canvas></canvas><div class="msg"><div class="t1">¡Firmamos!</div><div class="t2" id="fiesta-cuenta"></div><div class="t3" id="fiesta-monto"></div></div></div>
 <div id="error"></div>
 
 <script type="module">
 import { cargarDatos, usd, fecha, hora, esc, etapaCorta, estadoNextStep } from '/common.js';
 
-const ROTACION_MS = 30_000;
+const ROTACION_MS = 25_000;
 const $ = (s) => document.querySelector(s);
 let datos = null;
 let actual = 0;
 
+// Pantalla 1: Meta limpia sin componentes innecesarios
 function pantallaMeta(d) {
   const m = d.meta;
-  return `<section class="pantalla meta">
-    <div class="grande">
-      <div class="etq">ARR firmado 2026</div>
-      <div class="num">${usd(m.arrFirmadoUsd)}</div>
-      <div class="barra"><span style="width:${Math.min(100, m.avance * 100)}%"></span></div>
-      <div class="pct"><span><strong>${Math.round(m.avance * 100)}%</strong> de ${usd(m.metaUsd)}</span><span>Faltan <strong>${usd(m.faltaUsd)}</strong></span></div>
-    </div>
-    <div class="tiles">
-      <div class="tile"><div class="etq">Días al 31-dic</div><div class="num">${m.diasAlCierre}</div><div class="sub">Hay que firmar ${usd(m.ritmoSemanalUsd)} por semana</div></div>
-      <div class="tile"><div class="etq">En vivo (Ready for use)</div><div class="num">${usd(m.arrEnVivoUsd)}</div></div>
-      <div class="tile"><div class="etq">Ponderado que firma en 2026</div><div class="num">${usd(m.ponderado2026Usd)}</div><div class="sub">${m.dealsAbiertos} deals abiertos · ${usd(m.pipelineAbiertoUsd)} en pipeline</div></div>
+  return `<section class="pantalla meta-limpia">
+    <div class="etq">ARR firmado 2026</div>
+    <div class="num">${usd(m.arrFirmadoUsd)}</div>
+    <div class="barra"><span style="width:${Math.min(100, m.avance * 100)}%"></span></div>
+    <div class="pct">
+      <span><strong>${Math.round(m.avance * 100)}%</strong> de ${usd(m.metaUsd)}</span>
+      <span>Faltan <strong>${usd(m.faltaUsd)}</strong></span>
     </div>
   </section>`;
 }
 
-function pantallaCamino(d) {
-  const max = Math.max(...d.funnel.map((f) => f.arrUsd), 1);
-  const mw = d.mustWin.filter((x) => x.abierto).slice(0, 4);
-  return `<section class="pantalla camino">
-    <div><h2 class="sec">Must-win y firmados</h2><div class="mws">
-      ${d.meta.firmados.length ? `<div class="mw firmado"><div class="top"><span class="nombre">Firmados</span><span class="monto">${usd(d.meta.arrFirmadoUsd)}</span></div><div style="display:flex;gap:.5em;flex-wrap:wrap">${d.meta.firmados.map((f) => `<span class="chip bien">${esc(f.cuenta)} · ${usd(f.arrUsd)}</span>`).join('')}</div></div>` : ''}
-      ${mw.map((x) => {
-        const e = estadoNextStep(x);
-        return `<div class="mw"><div class="top"><span class="nombre">★ ${esc(x.cuenta)}</span><span class="monto">${usd(x.arrUsd)}</span></div>
-          <div class="tags" style="display:flex;gap:.5em;flex-wrap:wrap"><span class="chip sin-punto">${esc(etapaCorta(x.etapa))} · ${x.diasEtapa} días</span><span class="chip ${e.clase}">${e.texto}</span>${x.estancado ? '<span class="chip serio">Estancado</span>' : ''}<span class="chip sin-punto">${esc(x.responsable ?? 'Sin responsable')}</span></div>
-          <div class="ns">${esc(x.nextStep ?? 'Sin next step')}</div></div>`;
-      }).join('')}
-    </div></div>
-    <div><h2 class="sec">Funnel por etapa (ARR · deals)</h2><div class="fun">
-      ${d.funnel.map((f) => `<div class="fn"><span>${esc(etapaCorta(f.etapa))}</span><div class="barra"><span style="width:${(f.arrUsd / max) * 100}%"></span></div><span class="n"><strong>${usd(f.arrUsd)}</strong> · ${f.deals}</span></div>`).join('')}
-    </div></div>
+// Pantalla 2: Macro Pipeline (Carrera por etapas)
+function pantallaCarrera(d) {
+  const etapasVisibles = d.funnel.filter(f => f.etapa !== 'Closed lost' && f.etapa !== 'Churned' && f.etapa !== 'Ready for use 🎉');
+  return `<section class="pantalla carrera">
+    ${etapasVisibles.map(col => {
+      const dealsEtapa = d.deals.filter(x => x.abierto && x.etapa === col.etapa).sort((a,b) => b.arrUsd - a.arrUsd).slice(0, 5);
+      return `<div class="col-carrera">
+        <div class="col-cab">
+          <h3>${esc(etapaCorta(col.etapa))}</h3>
+          <span class="monto">${usd(col.arrUsd)}</span>
+        </div>
+        <div class="deals-lista">
+          ${dealsEtapa.map(x => {
+            const movido = x.movimientos.length > 0 ? 'movido' : '';
+            return `<div class="card-tv ${movido}">
+              <div class="top">
+                <span class="nombre">${esc(x.cuenta)}</span>
+                <span class="arr">${usd(x.arrUsd)}</span>
+              </div>
+              <div class="sub">
+                <span>${esc(x.owner ?? '—')}</span>
+                <span>${x.diasEtapa}d</span>
+              </div>
+            </div>`;
+          }).join('') || '<div class="tenue" style="font-size:0.85em; text-align:center; padding:1em;">Sin deals</div>'}
+        </div>
+      </div>`;
+    }).join('')}
   </section>`;
 }
 
+// Pantalla 3: Lo que nos toca (con texto completo sin cortes)
 function pantallaToca(d) {
+  const equipo = ['Tomi', 'Seba', 'Anto', 'Beto'];
   return `<section class="pantalla toca">
-    ${d.personas.map((p) => {
-      const lista = [...p.nosToca].sort((a, b) => (b.vencido - a.vencido) || (b.arrUsd - a.arrUsd)).slice(0, 5);
-      return `<div class="col">
-        <div class="cab">${p.avatar ? `<img src="${esc(p.avatar)}" alt="">` : `<span class="avatar">${esc(p.corto[0])}</span>`}
-          <div><h3>${esc(p.corto)}</h3><span class="${p.vencidos ? 'venc' : 'tenue'}">${p.vencidos} vencidos</span></div></div>
-        <ul>${lista.map((x) => {
+    ${equipo.map((p) => {
+      const susDeals = d.deals.filter((x) => x.abierto && (x.responsable === p || x.owner === p) && x.pelota !== 'Cliente');
+      const susTareas = d.tareas.filter((t) => t.asignados.includes(p));
+      const totalItems = [...susDeals.slice(0, 4), ...susTareas.slice(0, 2)];
+
+      return `<div class="col-toca">
+        <div class="cab">
+          <span class="avatar">${esc(p[0])}</span>
+          <div><h3>${esc(p)}</h3></div>
+        </div>
+        <ul>${totalItems.map((x) => {
+          if (x.texto) { // Es tarea
+            return `<li><span class="cuenta">Tarea Attio</span><span class="txt">${esc(x.texto)}</span></li>`;
+          }
           const e = estadoNextStep(x);
-          return `<li><div style="display:flex;justify-content:space-between;gap:.5em"><span class="cuenta">${esc(x.cuenta)}</span><span class="chip ${e.clase}">${e.texto}</span></div><span class="txt">${esc(x.nextStep)}</span></li>`;
+          return `<li>
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+              <span class="cuenta">${esc(x.cuenta)}</span>
+              <span class="chip ${e.clase}">${e.texto}</span>
+            </div>
+            <span class="txt">${esc(x.nextStep || 'Sin next step')}</span>
+          </li>`;
         }).join('') || '<li class="tenue">Al día</li>'}</ul>
       </div>`;
     }).join('')}
@@ -147,7 +196,7 @@ function pantallaToca(d) {
 
 function render() {
   $('#pantallas').className = '';
-  $('#pantallas').innerHTML = pantallaMeta(datos) + pantallaCamino(datos) + pantallaToca(datos);
+  $('#pantallas').innerHTML = pantallaMeta(datos) + pantallaCarrera(datos) + pantallaToca(datos);
   $('#actualizado').textContent = `Attio · actualizado ${hora(datos.actualizado)}`;
   mostrar(actual);
 }
@@ -160,7 +209,6 @@ function mostrar(i) {
   $('#puntos').innerHTML = [...ps].map((_, j) => `<span class="${j === actual ? 'on' : ''}"></span>`).join('');
 }
 
-// Celebración: si aparece un deal firmado que esta pantalla no había visto, explota.
 function revisarFirmas() {
   const ids = datos.meta.firmados.map((f) => f.id);
   let vistos = null;
@@ -178,7 +226,7 @@ function celebrar(f) {
   const c = caja.querySelector('canvas');
   const ctx = c.getContext('2d');
   c.width = innerWidth; c.height = innerHeight;
-  const colores = ['#3987e5', '#0ca30c', '#fab219', '#ec835a', '#e87ba4', '#9085e9'];
+  const colores = ['#4f46e5', '#10b981', '#f59e0b', '#ec835a', '#6366f1'];
   const piezas = Array.from({ length: 260 }, () => ({
     x: Math.random() * c.width, y: -Math.random() * c.height, v: 2 + Math.random() * 5,
     r: Math.random() * Math.PI, w: 6 + Math.random() * 10, col: colores[Math.floor(Math.random() * colores.length)],
@@ -212,12 +260,14 @@ async function cargar() {
 setInterval(() => ($('#reloj').textContent = new Date().toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })), 1000);
 setInterval(() => mostrar(actual + 1), ROTACION_MS);
 setInterval(cargar, 5 * 60 * 1000);
+
 document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight') mostrar(actual + 1);
   if (e.key === 'ArrowLeft') mostrar(actual + 2);
+  if (e.key === 'Escape' || e.key === 'Backspace') window.location.href = '/';
 });
+
 await cargar();
-if (new URLSearchParams(location.search).has('celebrar') && datos) celebrar(datos.meta.firmados[0] ?? { cuenta: 'Prueba', arrUsd: 0 });
 </script>
 </body>
 </html>
