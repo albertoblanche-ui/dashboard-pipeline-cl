@@ -1,6 +1,8 @@
+// api/data.js
 // GET /api/data → JSON del dashboard. Lee Attio como mucho cada 5 minutos por instancia.
 import { leerAttio } from '../lib/attio.js';
 import { construirDashboard } from '../lib/dashboard.js';
+import { construirIniciativas } from '../lib/iniciativas.js';
 
 const CACHE_MS = 5 * 60 * 1000;
 let cache = null;
@@ -22,7 +24,17 @@ export async function GET(request) {
   try {
     const forzar = new URL(request.url).searchParams.has('refrescar');
     const raw = await datos(forzar);
-    return Response.json(construirDashboard(raw), { headers: { 'Cache-Control': 'no-store' } });
+    
+    // 1. Construir datos generales del Dashboard
+    const dashboard = construirDashboard(raw);
+    
+    // 2. Construir métricas de Mis Iniciativas (Beto)
+    const iniciativas = construirIniciativas(dashboard, raw);
+    
+    // 3. Adjuntar las iniciativas al payload principal
+    dashboard.iniciativas = iniciativas;
+    
+    return Response.json(dashboard, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error(e);
     return Response.json({ error: 'attio', detalle: String(e.message).slice(0, 300) }, { status: 502 });
