@@ -104,4 +104,141 @@ export function construirDashboard(raw, ahora = new Date()) {
 
     const movimientos = hist
       .slice(1)
-      .map((v, i) => ({ de: titulo(hist[i]), a: titulo(v), fecha: v.active_from, por: miembro[v.created_by_actor?.id]?.
+      .map((v, i) => ({ de: titulo(hist[i]), a: titulo(v), fecha: v.active_from, por: miembro[v.created_by_actor?.id]?.corto ?? null }))
+      .filter((m) => new Date(m.fecha) >= semanaAtras);
+
+    return {
+      id,
+      nombre,
+      cuenta: nombre.split(' - ')[0],
+      url: `https://app.attio.com/telepatia-ai/custom/opportunities/record/${id}`,
+      etapa,
+      ordenEtapa: info?.orden ?? (ETAPAS_CERRADAS.includes(etapa) ? -1 : -2),
+      abierto,
+      firmado: ETAPAS_FIRMADAS.includes(etapa),
+      perdido: etapa === 'Closed lost',
+      arrUsd: Math.round(arrUsd),
+      arrEstimado: arrUsdAttio === 0 && arrClp > 0,
+      firmaEsperada,
+      firma2026: Boolean(firmaEsperada && firmaEsperada <= META_FECHA),
+      owner: miembro[ownerId]?.corto ?? null,
+      responsable: miembro[responsableId]?.corto ?? null,
+      responsableNombre: miembro[responsableId]?.nombre ?? null,
+      nextStep,
+      fechaNextStep: fechaNS?.toISOString().slice(0, 10) ?? null,
+      fechaNextStepLeidaDelTexto: Boolean(!fechaCampo && fechaNS),
+      pelota,
+      pelotaPorTexto: !titulo(valor(d, c.pelotaEn)) && Boolean(pelota),
+      vencido,
+      diasEtapa,
+      diasInactivo,
+      limiteEtapa: info?.estancado ?? null,
+      estancado,
+      candidatoPerdido,
+      mustWin,
+      tgp: deTGP.has(id),
+      problemas,
+      movimientos,
+      primeraReunion: texto(d, 'first_meeting_date'),
+      creado: d.created_at,
+    };
+  });
+
+  const abiertos = deals.filter((d) => d.abierto);
+  const firmados = deals.filter((d) => d.firmado);
+  const suma = (xs, k) => xs.reduce((a, d) => a + d[k], 0);
+
+  const funnel = ETAPAS.map((e) => {
+    const xs = deals.filter((d) => d.etapa === e.nombre);
+    return { etapa: e.nombre, deals: xs.length, arrUsd: suma(xs, 'arrUsd'), estancados: xs.filter((d) => d.estancado).length };
+  });
+
+  const arrFirmado = suma(firmados, 'arrUsd');
+  const diasAlCierre = Math.max(0, Math.ceil((new Date(META_FECHA + 'T23:59:59-03:00') - ahora) / DIA));
+  const falta = Math.max(0, META_ARR_USD - arrFirmado);
+
+  const porId = Object.fromEntries(deals.map((d) => [d.id, d]));
+  const vistas = new Set();
+  const tareas = raw.tareas
+    .filter((t) => !vistas.has(t.id.task_id) && vistas.add(t.id.task_id))
+    .map((t) => {
+      const deal = t.linked_records.map((l) => porId[l.target_record_id]).find(Boolean);
+      return {
+        id: t.id.task_id,
+        texto: t.content_plaintext,
+        vence: t.deadline_at?.slice(0, 10) ?? null,
+        vencida: t.deadline_at ? new Date(t.deadline_at) < ahora : false,
+        asignados: t.assignees.map((a) => miembro[a.referenced_actor_id]?.corto).filter(Boolean),
+        deal: deal ? { id: deal.id, cuenta: deal.cuenta, url: deal.url } : null,
+      };
+    })
+    .sort((a, b) => (a.vence ?? '9999').localeCompare(b.vence ?? '9999'));
+
+  const movimientosSemana = deals
+    .flatMap((d) => d.movimientos.map((m) => ({ ...m, cuenta: d.cuenta, arrUsd: d.arrUsd, url: d.url })))
+    .sort((a, b) => b.fecha.localeCompare(a.fecha));
+
+  // Orden objetivo: primero etapa más avanzada, luego ticket más alto
+  const colaOrdenada = abiertos.sort((a, b) => {
+    if (b.ordenEtapa !== a.ordenEtapa) return b.ordenEtapa - a.ordenEtapa;
+    return b.arrUsd - a.arrUsd;
+  });
+
+  // --- NUEVO: Demand Generation WoW (Últimas 8 semanas) ---
+  const demandGenWoW = [];
+  for (let i = 7; i >= 0; i--) {
+    const inicio = new Date(ahora.getTime() - (i * 7 + 7) * DIA);
+    const fin = new Date(ahora.getTime() - i * 7 * DIA);
+    const creadosEnSemana = deals.filter(d => {
+      const f = new Date(d.creado);
+      return f >= inicio && f < fin;
+    });
+    const label = `${inicio.getDate()}/${inicio.getMonth() + 1}`;
+    demandGenWoW.push({
+      etiqueta: label,
+      deals: creadosEnSemana.length,
+      arrUsd: suma(creadosEnSemana, 'arrUsd')
+    });
+  }
+
+  // --- NUEVO: Pipeline by ARR vs Meta $1M ---
+  const etapasTempranas = ['Qualification', 'First meeting held', 'Build consensus'];
+  const etapasAvanzadas = ['PoC preparation', 'PoC execution', 'Negotiation'];
+  const arrTemprano = suma(abiertos.filter(d => etapasTempranas.includes(d.etapa)), 'arrUsd');
+  const arrAvanzado = suma(abiertos.filter(d => etapasAvanzadas.includes(d.etapa)), 'arrUsd');
+
+  const desgloseArr = {
+    firmadoUsd: arrFirmado,
+    avanzadoUsd: arrAvanzado,
+    tempranoUsd: arrTemprano,
+    totalPipelineUsd: arrFirmado + arrAvanzado + arrTemprano,
+    metaUsd: META_ARR_USD,
+  };
+
+  return {
+    actualizado: raw.leidoEn,
+    meta: {
+      metaUsd: META_ARR_USD,
+      arrFirmadoUsd: arrFirmado,
+      arrEnVivoUsd: suma(deals.filter((d) => d.etapa === 'Ready for use 🎉'), 'arrUsd'),
+      avance: arrFirmado / META_ARR_USD,
+      faltaUsd: falta,
+      diasAlCierre,
+      ritmoSemanalUsd: Math.round(falta / Math.max(1, diasAlCierre / 7)),
+      pipelineAbiertoUsd: suma(abiertos, 'arrUsd'),
+      dealsAbiertos: abiertos.length,
+      firmados: firmados.map((d) => ({ id: d.id, cuenta: d.cuenta, arrUsd: d.arrUsd, etapa: d.etapa })),
+    },
+    funnel,
+    demandGenWoW,
+    desgloseArr,
+    mustWin: deals.filter((d) => d.mustWin && !d.perdido).sort((a, b) => b.arrUsd - a.arrUsd),
+    cola: colaOrdenada,
+    higiene: abiertos.filter((d) => d.problemas.length).sort((a, b) => b.arrUsd - a.arrUsd),
+    candidatosPerdido: abiertos.filter((d) => d.candidatoPerdido).sort((a, b) => b.diasEtapa - a.diasEtapa),
+    tareas,
+    movimientosSemana,
+    pelotaClienteDias: DIAS_PELOTA_CLIENTE,
+    deals,
+  };
+}
