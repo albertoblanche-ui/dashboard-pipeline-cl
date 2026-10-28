@@ -11,7 +11,7 @@
     padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
   }
   .header-left { display: flex; align-items: center; gap: 16px; }
-  .header-right { display: flex; align-items: center; gap: 12px; }
+  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   main { padding: 24px; max-width: 1600px; margin: 0 auto; display: grid; gap: 24px; }
   .panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 20px; }
   .panel h2 { font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
@@ -21,6 +21,22 @@
   .kpi .etq { font-size: 12px; color: var(--tinta-2); text-transform: uppercase; font-weight: 600; }
   .kpi .num { font-size: 28px; font-weight: 700; margin: 4px 0; color: var(--azul); }
   .kpi .sub { font-size: 12px; color: var(--tinta-3); }
+
+  /* Gráficos de Tracción */
+  .graficos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; }
+  .chart-wow { display: flex; align-items: flex-end; gap: 12px; height: 140px; padding-top: 24px; border-bottom: 1px solid var(--borde); }
+  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 6px; }
+  .bar-fill { width: 100%; max-width: 38px; background: var(--azul); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s; }
+  .bar-lbl { font-size: 11px; color: var(--tinta-3); }
+  .bar-val { font-size: 11px; font-weight: 700; color: var(--tinta); }
+
+  .progreso-meta { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--superficie-2); margin: 16px 0 10px; }
+  .prog-firmado { background: var(--bien); }
+  .prog-avanzado { background: var(--azul); }
+  .prog-temprano { background: var(--aviso); }
+  .leyenda-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; }
+  .item-leyenda { display: flex; align-items: center; gap: 6px; }
+  .punto-leyenda { width: 10px; height: 10px; border-radius: 3px; }
 </style>
 </head>
 <body>
@@ -34,6 +50,7 @@
       <option value="Todos">Todos los owners</option>
     </select>
     <button id="refrescar">Actualizar</button>
+    <a class="boton" style="background:var(--superficie-2); color:var(--tinta); border:1px solid var(--borde);" href="/iniciativas">Mis iniciativas</a>
     <a class="boton" href="/tv">Modo TV</a>
   </div>
 </header>
@@ -118,6 +135,15 @@ function render() {
   const higiene = d.higiene.filter(deEllos);
   const etapasKanban = d.funnel.filter(f => f.etapa !== 'Closed lost' && f.etapa !== 'Churned');
 
+  // Datos para gráfico WoW
+  const maxWoW = Math.max(...d.demandGenWoW.map(x => x.deals), 1);
+  
+  // Datos para Pipeline by ARR vs Meta
+  const des = d.desgloseArr;
+  const pctFirmado = Math.min(100, (des.firmadoUsd / des.metaUsd) * 100);
+  const pctAvanzado = Math.min(100 - pctFirmado, (des.avanzadoUsd / des.metaUsd) * 100);
+  const pctTemprano = Math.min(100 - pctFirmado - pctAvanzado, (des.tempranoUsd / des.metaUsd) * 100);
+
   $('#app').innerHTML = `
   <section class="kpis">
     <div class="kpi">
@@ -137,9 +163,43 @@ function render() {
     </div>
   </section>
 
+  <!-- Gráficos de Tracción -->
+  <section class="graficos-grid">
+    <div class="panel">
+      <h2>CL - Demand Generation WoW</h2>
+      <p class="muted" style="font-size:12px; margin:0;">Nuevas oportunidades creadas por semana en Chile.</p>
+      <div class="chart-wow">
+        ${d.demandGenWoW.map(s => {
+          const h = (s.deals / maxWoW) * 90;
+          return `
+          <div class="bar-col" title="${s.deals} deals (${usd(s.arrUsd)})">
+            <span class="bar-val">${s.deals}</span>
+            <div class="bar-fill" style="height:${Math.max(6, h)}%;"></div>
+            <span class="bar-lbl">${s.etiqueta}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Pipeline vs. Meta USD 1M</h2>
+      <p class="muted" style="font-size:12px; margin:0;">Volumen actual acumulado frente al objetivo anual.</p>
+      <div class="progreso-meta">
+        <div class="prog-firmado" style="width:${pctFirmado}%;" title="Firmado: ${usd(des.firmadoUsd)}"></div>
+        <div class="prog-avanzado" style="width:${pctAvanzado}%;" title="Avanzado (PoC / Neg.): ${usd(des.avanzadoUsd)}"></div>
+        <div class="prog-temprano" style="width:${pctTemprano}%;" title="Temprano: ${usd(des.tempranoUsd)}"></div>
+      </div>
+      <div class="leyenda-meta">
+        <div class="item-leyenda"><span class="punto-leyenda prog-firmado"></span>Firmado: <strong>${usd(des.firmadoUsd)}</strong></div>
+        <div class="item-leyenda"><span class="punto-leyenda prog-avanzado"></span>Avanzado: <strong>${usd(des.avanzadoUsd)}</strong></div>
+        <div class="item-leyenda"><span class="punto-leyenda prog-temprano"></span>Temprano: <strong>${usd(des.tempranoUsd)}</strong></div>
+      </div>
+    </div>
+  </section>
+
   <section class="panel">
     <h2>La Carrera hacia el Millón (Pipeline Macro)</h2>
-    <p class="muted" style="font-size:13px; margin-bottom:12px;">Haz clic en cualquier tarjeta para ver detalles y sugerencias. Los bordes verdes indican avance esta semana.</p>
+    <p class="muted" style="font-size:13px; margin-bottom:12px;">Haz clic en cualquier tarjeta para ver detalles y sugerencias. Bordes verdes indican avance esta semana.</p>
     <div class="kanban-scroll">
       <div class="kanban-board">
         ${etapasKanban.map(col => {
