@@ -1,0 +1,592 @@
+<title>Dashboard Pipeline Chile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&display=swap">
+<style>
+/* Layout: una columna ancha; parte 1 = maqueta operativa (grilla de paneles), parte 2 = propuesta en texto con tablas. Marca Telepatía. */
+:root{
+  --bg:#F6F9F4; --surface:#FCFCFC; --sunk:#ECF1E9; --line:#D5E0D2;
+  --fg:#1C211C; --muted:#576A55; --faint:#8AA285;
+  --accent:#055A35; --accent-soft:#9FA782; --accent-tint:#E3EBDD;
+  --ok:#1F7A4A; --warn:#A86A00; --bad:#B3261E; --bad-tint:#F8E3E1; --warn-tint:#F6EBD3;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141814; --surface:#1C211C; --sunk:#232A23; --line:#334033;
+  --fg:#FCFCFC; --muted:#BCCCB7; --faint:#8AA285;
+  --accent:#6CC08F; --accent-soft:#9FA782; --accent-tint:#21342A;
+  --ok:#6CC08F; --warn:#E3A93C; --bad:#F2867D; --bad-tint:#3A2220; --warn-tint:#3A3020; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141814; --surface:#1C211C; --sunk:#232A23; --line:#334033;
+  --fg:#FCFCFC; --muted:#BCCCB7; --faint:#8AA285;
+  --accent:#6CC08F; --accent-soft:#9FA782; --accent-tint:#21342A;
+  --ok:#6CC08F; --warn:#E3A93C; --bad:#F2867D; --bad-tint:#3A2220; --warn-tint:#3A3020; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:28px 64px}
+@media (min-width:720px){.wrap{padding-inline:32px}}
+h1,h2,h3{font-family:var(--serif);font-weight:400;text-wrap:balance;margin:0}
+h1{font-size:clamp(28px,4vw,40px);line-height:1.15}
+h2{font-size:clamp(22px,2.6vw,28px);line-height:1.2}
+h3{font-family:var(--sans);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+p{margin:0}
+.eyebrow{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.num{font-variant-numeric:tabular-nums}
+header.top{display:grid;gap:10px;margin-bottom:22px}
+header.top .lede{max-width:70ch;color:var(--muted)}
+nav.jump{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+nav.jump a{font-size:13px;font-weight:500;color:var(--accent);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 12px;background:var(--surface)}
+nav.jump a:hover,nav.jump a:focus-visible{border-color:var(--accent);outline:none}
+.part{margin-top:40px;display:grid;gap:16px}
+.part-head{display:grid;gap:6px;border-top:3px solid var(--accent);padding-top:14px}
+.snapnote{font-size:13px;color:var(--muted);max-width:80ch}
+
+/* Maqueta */
+.screen{background:var(--sunk);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:14px}
+.screen-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.screen-bar .live{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.btn{font:inherit;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--accent);background:var(--accent);color:var(--surface);padding:7px 14px;cursor:pointer}
+.btn:hover{filter:brightness(1.08)}
+.btn:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.grid{display:grid;gap:14px}
+.g-hero{grid-template-columns:1fr}
+@media (min-width:900px){.g-hero{grid-template-columns:1.6fr 1fr}}
+.g-2{grid-template-columns:1fr}
+@media (min-width:900px){.g-2{grid-template-columns:1fr 1fr}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:12px;align-content:start;min-width:0}
+.panel-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.panel-head .q{font-size:13px;color:var(--muted)}
+
+.hero-num{font-family:var(--serif);font-size:clamp(44px,7vw,72px);line-height:1;letter-spacing:-.01em}
+.hero-row{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px 18px}
+.hero-of{font-size:18px;color:var(--muted)}
+.meter{position:relative;height:16px;background:var(--sunk);border-radius:999px;overflow:hidden;border:1px solid var(--line)}
+.meter .fill{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:999px}
+.meter-scale{display:flex;justify-content:space-between;font-size:12px;color:var(--faint)}
+.hero-facts{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:14px}
+.hero-facts b{font-weight:600}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:2px;min-width:0}
+.tile .v{font-family:var(--serif);font-size:30px;line-height:1.1}
+.tile .l{font-size:12px;color:var(--muted)}
+.tile.pending .v{color:var(--faint)}
+
+/* Camino a la meta */
+.path{position:relative;height:46px;border-radius:8px;background:var(--sunk);border:1px solid var(--line);overflow:visible}
+.seg{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;overflow:hidden;white-space:nowrap;border-right:2px solid var(--surface)}
+.seg.signed{background:var(--accent);color:var(--surface)}
+.seg.mw{background:var(--accent-tint);color:var(--fg);background-image:repeating-linear-gradient(135deg,transparent 0 6px,rgba(5,90,53,.10) 6px 12px)}
+.goal-line{position:absolute;top:-8px;bottom:-8px;width:0;border-left:2px dashed var(--fg)}
+.goal-tag{position:absolute;top:-26px;transform:translateX(-50%);font-size:12px;font-weight:600;white-space:nowrap}
+.path-wrap{padding-top:26px}
+.path-legend{display:grid;gap:8px}
+@media (min-width:700px){.path-legend{grid-template-columns:repeat(4,1fr)}}
+.pl{border-left:3px solid var(--accent-soft);padding:2px 0 2px 10px;display:grid;gap:2px;min-width:0}
+.pl.signed{border-left-color:var(--accent)}
+.pl .t{font-weight:600}
+.pl .m{font-size:13px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;border:1px solid var(--line);border-radius:999px;padding:3px 10px;background:var(--surface);white-space:nowrap}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.02em;border-radius:999px;padding:2px 8px;white-space:nowrap}
+.pill.bad{background:var(--bad-tint);color:var(--bad)}
+.pill.warn{background:var(--warn-tint);color:var(--warn)}
+.pill.ok{background:var(--accent-tint);color:var(--accent)}
+
+/* Funnel */
+.funnel{display:grid;gap:8px}
+.f-row{display:grid;grid-template-columns:minmax(110px,150px) 1fr;gap:10px;align-items:center}
+.f-label{font-size:13px;min-width:0}
+.f-label .c{color:var(--muted)}
+.f-bar{position:relative;height:22px;background:var(--sunk);border-radius:4px}
+.f-bar .all{position:absolute;inset:0 auto 0 0;background:var(--accent-soft);opacity:.55;border-radius:4px}
+.f-bar .w{position:absolute;inset:0 auto 0 0;background:var(--accent);border-radius:4px}
+.f-bar .val{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;font-variant-numeric:tabular-nums;color:var(--fg)}
+.f-key{display:flex;gap:14px;font-size:12px;color:var(--muted);flex-wrap:wrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:5px}
+
+/* Tablas */
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th{text-align:left;font-weight:600;color:var(--muted);font-size:12px;border-bottom:1px solid var(--line);padding:6px 8px;white-space:nowrap}
+td{border-bottom:1px solid var(--sunk);padding:7px 8px;vertical-align:top}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.num{white-space:nowrap}
+.heat{display:inline-flex;gap:2px}
+.heat i{width:7px;height:12px;border-radius:2px;background:var(--line);display:inline-block}
+.heat i.on{background:var(--warn)}
+.heat.h3 i.on{background:var(--bad)}
+
+/* Personas */
+.people{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:640px){.people{grid-template-columns:1fr 1fr}}
+@media (min-width:1050px){.people{grid-template-columns:repeat(4,1fr)}}
+.person{display:grid;gap:10px;align-content:start}
+.person-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.person-head .name{font-family:var(--serif);font-size:20px}
+.person-stats{display:flex;flex-wrap:wrap;gap:6px}
+.items{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.items li{border-top:1px solid var(--sunk);padding-top:8px;display:grid;gap:3px;font-size:13px;min-width:0}
+.items .deal{font-weight:600;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.items .txt{color:var(--muted);overflow-wrap:anywhere}
+.more{font-size:12px;color:var(--faint)}
+
+/* Salud */
+.health{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}
+.h-tile{border-radius:10px;padding:12px 14px;display:grid;gap:4px;border:1px solid var(--line);background:var(--surface)}
+.h-tile .v{font-family:var(--serif);font-size:32px;line-height:1}
+.h-tile.bad{border-left:4px solid var(--bad)}
+.h-tile.warn{border-left:4px solid var(--warn)}
+.h-tile .l{font-size:13px}
+.h-tile .rule{font-size:12px;color:var(--muted)}
+
+/* Propuesta */
+.prose{display:grid;gap:14px;max-width:78ch}
+.prose p,.prose li{color:var(--fg)}
+.prose ul,.prose ol{margin:0;padding-left:20px;display:grid;gap:6px}
+.thesis{font-family:var(--serif);font-size:clamp(20px,2.4vw,26px);line-height:1.35;max-width:46ch}
+.principles{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:800px){.principles{grid-template-columns:repeat(3,1fr)}}
+.principle{border-top:2px solid var(--accent);padding-top:10px;display:grid;gap:4px}
+.principle b{font-weight:600}
+.arch{display:grid;gap:10px;grid-template-columns:1fr;align-items:stretch}
+@media (min-width:860px){.arch{grid-template-columns:1fr 24px 1fr 24px 1fr}}
+.arch-col{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:8px;align-content:start}
+.arch-col .box{background:var(--sunk);border-radius:6px;padding:7px 10px;font-size:13px}
+.arch-col .box b{display:block;font-weight:600}
+.arch-arrow{display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:20px}
+@media (max-width:859px){.arch-arrow{transform:rotate(90deg);height:18px}}
+.opt-rec{background:var(--accent-tint)}
+.phases{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:800px){.phases{grid-template-columns:repeat(4,1fr)}}
+.phase{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:grid;gap:8px;align-content:start}
+.phase .when{font-size:12px;font-weight:600;color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+.phase .what{font-family:var(--serif);font-size:19px}
+.phase ul{margin:0;padding-left:18px;display:grid;gap:4px;font-size:13px}
+.decisions{display:grid;gap:10px;counter-reset:d;list-style:none;padding:0;margin:0}
+.decisions li{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 50px;position:relative;display:grid;gap:4px}
+.decisions li::before{counter-increment:d;content:counter(d);position:absolute;left:14px;top:12px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:var(--surface);font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.decisions .rec{font-size:13px;color:var(--muted)}
+.decisions .rec b{color:var(--accent);font-weight:600}
+footer{margin-top:40px;font-size:12px;color:var(--faint);max-width:90ch}
+
+/* Celebración */
+#confetti{position:fixed;inset:0;pointer-events:none;z-index:50}
+.toast{position:fixed;left:50%;top:22%;transform:translate(-50%,-50%) scale(.9);background:var(--accent);color:var(--surface);font-family:var(--serif);font-size:clamp(24px,4vw,40px);padding:18px 30px;border-radius:14px;opacity:0;transition:opacity .25s,transform .25s;z-index:51;text-align:center;pointer-events:none;max-width:calc(100vw - 32px)}
+.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.toast small{display:block;font-family:var(--sans);font-size:14px;opacity:.85;margin-top:4px}
+</style>
+
+<canvas id="confetti" aria-hidden="true"></canvas>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<div class="wrap">
+  <header class="top">
+    <div class="eyebrow">Telepatía Chile · Propuesta para Tomás</div>
+    <h1>Dashboard de pipeline Chile</h1>
+    <p class="lede">Una pantalla para todo el equipo que responde tres preguntas cada mañana: cuánto nos falta para el millón, qué deals tenemos que empujar y qué tiene que hacer cada uno hoy. Abajo está la maqueta con los datos reales de Attio al 14-oct y, después, cómo lo armamos y lo dejamos funcionando 24/7.</p>
+    <nav class="jump" aria-label="Secciones">
+      <a href="#maqueta">Maqueta</a>
+      <a href="#componentes">Componentes</a>
+      <a href="#datos">Datos en Attio</a>
+      <a href="#despliegue">Despliegue</a>
+      <a href="#plan">Plan</a>
+      <a href="#decisiones">Decisiones</a>
+    </nav>
+  </header>
+
+  <!-- ============ PARTE 1: MAQUETA ============ -->
+  <section class="part" id="maqueta">
+    <div class="part-head">
+      <div class="eyebrow">1 · Así se vería</div>
+      <h2>Maqueta con el pipeline de hoy</h2>
+      <p class="snapnote">Foto de Attio del 14-oct-2026 (57 oportunidades de Chile, 6 en Closed lost). Montos en USD estimados desde el ARR en CLP a 930 CLP/USD, la tasa implícita de Attio, porque 34 deals tienen el ARR en USD en 0. En la versión real estos números se actualizan solos.</p>
+    </div>
+
+    <div class="screen">
+      <div class="screen-bar">
+        <div class="live"><span class="dot"></span><span>Attio · actualizado 14-oct-2026 · se refresca cada 5 min</span></div>
+        <button class="btn" id="celebrate" type="button">Simular una firma</button>
+      </div>
+
+      <div class="grid g-hero">
+        <div class="panel" id="p-goal">
+          <div class="panel-head"><h3>ARR firmado 2026</h3><span class="q">¿Cuánto llevamos?</span></div>
+          <div class="hero-row">
+            <div class="hero-num num" id="arrSigned">—</div>
+            <div class="hero-of">de USD 1.000K</div>
+          </div>
+          <div>
+            <div class="meter" aria-label="Avance hacia la meta"><div class="fill" id="meterFill" style="width:0"></div></div>
+            <div class="meter-scale num"><span>0</span><span>250K</span><span>500K</span><span>750K</span><span>1M</span></div>
+          </div>
+          <div class="hero-facts num">
+            <span><b id="pct">—</b> de la meta</span>
+            <span>Faltan <b id="gap">—</b></span>
+            <span><b id="days">—</b> días al 31-dic</span>
+            <span>ARR en vivo <b id="arrLive">—</b></span>
+          </div>
+        </div>
+        <div class="tiles">
+          <div class="tile"><span class="v num" id="tOpen">—</span><span class="l">deals abiertos</span></div>
+          <div class="tile"><span class="v num" id="tW26">—</span><span class="l">ponderado que firma en 2026</span></div>
+          <div class="tile"><span class="v num" id="tPipe">—</span><span class="l">pipeline abierto total</span></div>
+          <div class="tile pending"><span class="v">—</span><span class="l">vidas salvadas (Critical Saving Alerts, pendiente con Brandon)</span></div>
+        </div>
+      </div>
+
+      <div class="panel" id="p-path">
+        <div class="panel-head"><h3>Camino a la meta</h3><span class="q">¿Con qué deals llegamos al millón?</span></div>
+        <div class="path-wrap"><div class="path" id="pathBar"></div></div>
+        <div class="path-legend" id="pathLegend"></div>
+        <div style="display:grid;gap:6px">
+          <span class="small muted">Para asegurar la meta falta uno más de estos (Tomás, 9-oct):</span>
+          <div class="chips" id="fourth"></div>
+        </div>
+      </div>
+
+      <div class="grid g-2">
+        <div class="panel" id="p-funnel">
+          <div class="panel-head"><h3>Funnel por etapa</h3><span class="q">¿Dónde está la plata?</span></div>
+          <div class="funnel" id="funnel"></div>
+          <div class="f-key"><span><span class="sw" style="background:var(--accent-soft);opacity:.55"></span>ARR total</span><span><span class="sw" style="background:var(--accent)"></span>ARR ponderado por etapa</span></div>
+        </div>
+        <div class="panel" id="p-hot">
+          <div class="panel-head"><h3>Deals calientes</h3><span class="q">¿Qué empujamos esta semana?</span></div>
+          <div class="tbl-wrap"><table id="hot"><thead><tr><th>Deal</th><th>Etapa</th><th class="r">ARR</th><th>Firma</th><th>Calor</th></tr></thead><tbody></tbody></table></div>
+          <span class="small muted">Calor = probabilidad de la etapa × ARR, solo deals que firman en 2026 o son must-win. En la versión real suma actividad reciente.</span>
+        </div>
+      </div>
+
+      <div class="panel" id="p-people">
+        <div class="panel-head"><h3>Next steps por persona</h3><span class="q">¿Qué tiene que hacer cada uno hoy?</span></div>
+        <p class="small muted">Hoy se agrupa por dueño del deal, porque el responsable del next step está vacío en casi todos. Con el campo nuevo cada paso cae en quien lo tiene que hacer, separado en "nos toca" y "esperando al cliente".</p>
+        <div class="people" id="people"></div>
+      </div>
+
+      <div class="panel" id="p-health">
+        <div class="panel-head"><h3>Alertas</h3><span class="q">¿Qué se nos está quedando atrás?</span></div>
+        <div class="health" id="health"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PARTE 2: PROPUESTA ============ -->
+  <section class="part" id="componentes">
+    <div class="part-head">
+      <div class="eyebrow">2 · Cómo lo pienso</div>
+      <h2>Componentes y por qué cada uno</h2>
+    </div>
+    <p class="thesis">Un dashboard de pipeline sirve si cambia lo que el equipo hace hoy. Por eso la mitad de esta propuesta son alertas y orden en Attio, no gráficos.</p>
+    <div class="principles">
+      <div class="principle"><b>Attio es la única fuente</b><span class="muted small">El dashboard solo lee. Si algo está mal, se corrige en Attio y la pantalla lo refleja. Así no hay dos verdades.</span></div>
+      <div class="principle"><b>Cada número lleva a una acción</b><span class="muted small">Cada panel responde una pregunta y termina en un deal o una persona. Si un número no cambia ninguna decisión, sale.</span></div>
+      <div class="principle"><b>La alerta llega sola</b><span class="muted small">Lo más importante para ti es que ningún deal se atrase. Eso no puede depender de que alguien abra la pantalla: llega por Slack.</span></div>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Componente</th><th>Pregunta que responde</th><th>Dato en Attio</th><th>¿Está el dato hoy?</th></tr></thead>
+        <tbody>
+          <tr><td><b>ARR firmado vs meta</b></td><td>¿Cuánto llevamos y cuánto falta?</td><td>Deals en Contract signature + Ready for use, ARR en CLP ÷ 930</td><td><span class="pill warn">Parcial</span> el ARR USD está en 0 en 34 deals; se calcula desde CLP</td></tr>
+          <tr><td><b>ARR en vivo</b></td><td>¿Cuánto ya está en producción?</td><td>Ready for use 🎉</td><td><span class="pill ok">Sí</span> hoy es 0</td></tr>
+          <tr><td><b>Camino a la meta</b></td><td>¿Con qué deals llegamos al millón?</td><td>Campo nuevo "Must-win"</td><td><span class="pill bad">No</span> hay que crearlo</td></tr>
+          <tr><td><b>Funnel por etapa</b></td><td>¿Dónde está la plata?</td><td>Deal Stage, ARR, Weighted amount</td><td><span class="pill ok">Sí</span></td></tr>
+          <tr><td><b>Pronóstico 2026</b></td><td>¿Cuánto firma de verdad este año?</td><td>Fcst Signature Date × probabilidad de etapa</td><td><span class="pill warn">Parcial</span> varias fechas no se han revisado</td></tr>
+          <tr><td><b>Deals calientes</b></td><td>¿Qué empujamos esta semana?</td><td>Etapa, ARR, fecha de firma y última actividad</td><td><span class="pill warn">Parcial</span> no hay fecha de última actividad del deal</td></tr>
+          <tr><td><b>Next steps por persona</b></td><td>¿Qué tiene que hacer cada uno hoy?</td><td>Next step + fecha + responsable + quién tiene la pelota</td><td><span class="pill bad">No</span> 18 abiertos sin next step y casi ninguno con responsable</td></tr>
+          <tr><td><b>Alertas</b></td><td>¿Qué se nos está quedando atrás?</td><td>Reglas sobre los campos de arriba</td><td><span class="pill ok">Sí</span> con los campos nuevos</td></tr>
+          <tr><td><b>Movimiento de la semana</b></td><td>¿Qué cambió desde el lunes?</td><td>Historial de etapas que guarda Attio</td><td><span class="pill ok">Sí</span> se lee por API</td></tr>
+          <tr><td><b>Vidas salvadas</b></td><td>¿Qué impacto clínico estamos teniendo?</td><td>Critical Saving Alerts (MCP de Telepatía)</td><td><span class="pill warn">Pendiente</span> lo veo con Brandon</td></tr>
+          <tr><td><b>Celebración</b></td><td>Que explote la pantalla al firmar o al salvar una vida</td><td>Aviso de Attio cuando un deal pasa a Contract signature</td><td><span class="pill ok">Sí</span> con la app propia</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="small muted">Lo dejé fuera a propósito: actividad por vendedor (llamadas, correos). Con un equipo de cuatro personas y deals de 6 meses, mide esfuerzo y no avance. Si después hace falta, se suma.</p>
+  </section>
+
+  <section class="part" id="datos">
+    <div class="part-head">
+      <div class="eyebrow">3 · Lo que hay que ordenar primero</div>
+      <h2>Cuatro campos nuevos en Attio</h2>
+    </div>
+    <div class="prose">
+      <p>El dashboard muestra lo que hay en Attio, nada más. Hoy los next steps son texto libre: no se puede saber de quién son, para cuándo ni si dependen de nosotros o del cliente. Con estos cuatro campos en la oportunidad, las alertas funcionan solas. Los crea un admin en unos 30 minutos.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Campo nuevo</th><th>Tipo</th><th>Para qué</th></tr></thead>
+        <tbody>
+          <tr><td><b>Fecha del next step</b></td><td>Fecha</td><td>Saber qué está vencido, qué toca hoy y qué toca esta semana.</td></tr>
+          <tr><td><b>Responsable del next step</b></td><td>Persona</td><td>Pasarlo de la lista CL - Pipeline a la oportunidad. Hoy existe ahí, pero casi siempre está vacío.</td></tr>
+          <tr><td><b>Pelota en</b></td><td>Nosotros / Cliente</td><td>Tu regla del 9-oct: si nos toca a nosotros, se hace el mismo día. Si le toca al cliente, el sistema recuerda hacerle seguimiento.</td></tr>
+          <tr><td><b>Must-win</b></td><td>Sí / No</td><td>Marca los deals que nos llevan a la meta: ACHS, UC Christus, San José y el cuarto que elijamos.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p><b>Reglas de alerta</b> (todas con los datos que ya existen más los cuatro campos):</p>
+      <ul>
+        <li>Deal abierto sin next step, sin fecha o sin responsable.</li>
+        <li>Next step vencido. Si la pelota la tenemos nosotros, alerta roja el mismo día.</li>
+        <li>Pelota en el cliente por más de 5 días hábiles: recordatorio de seguimiento al responsable.</li>
+        <li>Deal sin movimiento por más de 14 días.</li>
+        <li>Fecha de firma ya pasada en un deal que sigue abierto.</li>
+        <li>Must-win que no avanza de etapa en 3 semanas.</li>
+      </ul>
+      <p class="small muted">Ojo con un dato de la maqueta: ACHS es el must-win más grande (unos USD 750K, casi todo lo que falta para la meta) y hoy no tiene next step en Attio.</p>
+    </div>
+  </section>
+
+  <section class="part" id="despliegue">
+    <div class="part-head">
+      <div class="eyebrow">4 · Cómo queda activo 24/7</div>
+      <h2>Tres formas de desplegarlo</h2>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th></th><th>A · Reportes nativos de Attio</th><th>B · Dashboard en Claude</th><th class="opt-rec">C · App propia (recomendada)</th></tr></thead>
+        <tbody>
+          <tr><td><b>Qué es</b></td><td>Los dashboards que trae Attio</td><td>Una página en claude.ai que lee Attio con el conector de quien la abre</td><td class="opt-rec">Una página web nuestra (Vercel) que lee Attio por API</td></tr>
+          <tr><td><b>Tiempo</b></td><td>1 día</td><td>1 a 2 días</td><td class="opt-rec">1 a 2 semanas (la armo con Claude Code)</td></tr>
+          <tr><td><b>Costo</b></td><td>Incluido</td><td>Incluido</td><td class="opt-rec">Unos USD 20 al mes</td></tr>
+          <tr><td><b>24/7 en una TV</b></td><td>Sí, pero sin el resto de lo que pediste</td><td>Depende de una sesión de Claude abierta</td><td class="opt-rec">Sí, con modo TV</td></tr>
+          <tr><td><b>Meta y % de avance</b></td><td>No se puede armar bien</td><td>Sí</td><td class="opt-rec">Sí</td></tr>
+          <tr><td><b>Celebración al firmar</b></td><td>No</td><td>Solo con la página abierta y con demora</td><td class="opt-rec">Al instante, por aviso de Attio</td></tr>
+          <tr><td><b>Vidas salvadas</b></td><td>No</td><td>Si el MCP de Telepatía se puede conectar</td><td class="opt-rec">Sí, por API</td></tr>
+          <tr><td><b>Alertas en Slack</b></td><td>No</td><td>Aparte, con una tarea programada</td><td class="opt-rec">Sí, en la misma app</td></tr>
+          <tr><td><b>Quién lo ve</b></td><td>Solo quien tiene Attio</td><td>Quien tiene Attio conectado en Claude</td><td class="opt-rec">Cualquiera con correo @telepatia.ai</td></tr>
+          <tr><td><b>Qué necesito</b></td><td>Nada</td><td>Nada</td><td class="opt-rec">Una llave de API de Attio de solo lectura (la crea un admin) y una cuenta de Vercel del equipo</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="prose">
+      <p><b>Recomiendo la C.</b> Es la única que cumple todo lo que pediste: 24/7, celebración, vidas salvadas y alertas. Además puede crecer hasta ser la plataforma de la que hablamos. La A no muestra la meta ni celebra, y la B depende de que alguien tenga Claude abierto.</p>
+    </div>
+    <div class="arch" aria-label="Cómo se conectan las piezas">
+      <div class="arch-col">
+        <h3>Fuentes</h3>
+        <div class="box"><b>Attio</b>Deals, next steps, tareas, historial de etapas</div>
+        <div class="box"><b>MCP de Telepatía</b>Critical Saving Alerts (vidas salvadas)</div>
+        <div class="box"><b>Más adelante</b>Gmail, Slack, WhatsApp y Granola, vía el agente</div>
+      </div>
+      <div class="arch-arrow" aria-hidden="true">→</div>
+      <div class="arch-col">
+        <h3>App en Vercel</h3>
+        <div class="box"><b>Lectura cada 5 min</b>API de Attio, solo lectura, con caché</div>
+        <div class="box"><b>Avisos al instante</b>Attio avisa cuando un deal cambia de etapa</div>
+        <div class="box"><b>Revisión diaria 8:00</b>Aplica las reglas de alerta</div>
+        <div class="box"><b>Acceso</b>Solo cuentas @telepatia.ai</div>
+      </div>
+      <div class="arch-arrow" aria-hidden="true">→</div>
+      <div class="arch-col">
+        <h3>Lo que ve el equipo</h3>
+        <div class="box"><b>Pantalla del equipo</b>Notebook o celular, con filtro por persona</div>
+        <div class="box"><b>Modo TV</b>Rota los paneles y celebra cada firma</div>
+        <div class="box"><b>Slack</b>Mensaje directo 8:30 con lo de cada uno, aviso de cierres en el canal y resumen del viernes</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" id="plan">
+    <div class="part-head">
+      <div class="eyebrow">5 · Plan</div>
+      <h2>En cuatro etapas, partiendo por los datos</h2>
+    </div>
+    <div class="phases">
+      <div class="phase"><span class="when">Esta semana · 15 al 17-oct</span><span class="what">Ordenar Attio</span><ul><li>Crear los 4 campos</li><li>Next step con fecha y responsable en los 18 deals que no tienen</li><li>Marcar los must-win</li><li>Mensaje diario por Slack con lo de cada uno (tarea programada de Claude, sin infraestructura)</li></ul></div>
+      <div class="phase"><span class="when">20 al 31-oct</span><span class="what">Versión 1 en vivo</span><ul><li>Meta, camino, funnel, deals calientes, next steps por persona y alertas</li><li>Se actualiza cada 5 min</li><li>Lo usamos en la revisión del lunes</li></ul></div>
+      <div class="phase"><span class="when">Noviembre</span><span class="what">TV y celebración</span><ul><li>Modo TV en la oficina</li><li>Celebración al firmar</li><li>Vidas salvadas</li><li>Movimiento de la semana</li><li>Lo usan desde el día uno las dos personas que entran</li></ul></div>
+      <div class="phase"><span class="when">Diciembre</span><span class="what">Agente conectado</span><ul><li>El agente lee correo, Slack, WhatsApp y Granola y propone next steps</li><li>El dashboard muestra lo que falta aprobar</li><li>Se aprueba o se rechaza, como en el CDSS</li></ul></div>
+    </div>
+    <div class="prose">
+      <p><b>Cómo se usa.</b> Un dashboard sin una reunión que lo use se muere. Propongo tres momentos:</p>
+      <ul>
+        <li><b>Todos los días, 8:30.</b> Cada uno recibe por Slack sus pasos vencidos y los de hoy.</li>
+        <li><b>Lunes, 15 minutos.</b> Revisamos la pantalla en orden: meta, camino, alertas y después cada persona.</li>
+        <li><b>Viernes.</b> Llega solo un resumen de qué se movió en la semana.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="part" id="decisiones">
+    <div class="part-head">
+      <div class="eyebrow">6 · Para decidir</div>
+      <h2>Lo que necesito de ti</h2>
+    </div>
+    <ol class="decisions">
+      <li><b>¿Creamos los cuatro campos en Attio?</b><span class="rec"><b>Recomiendo:</b> sí. Los creas tú como admin o me das permiso para crearlos.</span></li>
+      <li><b>¿Vamos con la app propia en Vercel?</b><span class="rec"><b>Recomiendo:</b> sí. Necesito una llave de API de Attio de solo lectura y una cuenta de Vercel del equipo.</span></li>
+      <li><b>¿Cuál es el cuarto must-win?</b><span class="rec"><b>Recomiendo:</b> marcar hoy ACHS, UC Christus y San José, y elegir el cuarto el lunes entre Policenter, Sanasalud, Andes, FALP, Cetep e Inmunomédica.</span></li>
+      <li><b>¿La meta de USD 1MM es ARR firmado?</b><span class="rec"><b>Recomiendo:</b> sí, firmado = Contract signature + Ready for use, y el ARR en vivo aparte.</span></li>
+      <li><b>¿Fijamos el tipo de cambio en 930 CLP/USD para la meta?</b><span class="rec"><b>Recomiendo:</b> sí, para que el avance no se mueva con el dólar.</span></li>
+      <li><b>¿Dónde llegan las alertas?</b><span class="rec"><b>Recomiendo:</b> un mensaje directo diario a cada uno y un canal #pipeline-cl solo para cierres y movimientos de etapa.</span></li>
+    </ol>
+  </section>
+
+  <footer>Preparado por Alberto Blanche, 14-oct-2026, a partir de la reunión "Tomás / Alberto Next Steps PipeLine" del 9-oct y de una lectura de Attio (solo lectura, nada modificado). Los montos en USD son estimaciones desde CLP.</footer>
+</div>
+
+<script type="application/json" id="data">{"deals":[{"id":"0253a1f0-1c0e-42b8-9a87-7e0fd6a0440d","n":"Andes Salud","s":"Build consensus","usd":645161,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Cerrar fecha y sede de la presentación con Escaffi/Rosas, idealmente conservando a las personas clave que quieren sumar (esperar la confirmación de Escaffi el lunes o cerrar por Wh","mw":null,"c4":true,"temp":null,"usd0":true},{"id":"8e629dff-514c-4810-8bcd-fafab71b8acd","n":"Bupa Chile","s":"Build consensus","usd":903226,"p":0.3,"close":"2027-02-28","own":"Tomás","nso":"Catalina","ns":"Luis se alinea con Andy para evaluar avanzar; desde ahí, coordinar conversación con el área médica (casos de uso CDSS + auditoría) y abrir carril con la aseguradora para entender s","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"922509d1-fa5c-48f6-8353-833acf34d0f1","n":"Centro Médico Cedimed","s":"Build consensus","usd":86022,"p":0.3,"close":"2027-01-31","own":"Tomás","nso":null,"ns":"Enviar a Illich propuesta de NDA (para revisión de su abogado) + correo con próximos pasos (lun 05/10). Coordinar fecha de visita presencial a Copiapó (Tomás + director médico) par","mw":null,"c4":false,"temp":"Warm","usd0":false},{"id":"d480db2a-0223-464b-aea9-8e3ad7b00cb6","n":"Clinica Indisa","s":"Build consensus","usd":387097,"p":0.3,"close":"2027-01-22","own":"Catalina","nso":null,"ns":"Confirmar horario con Indisa y dejar agendada la referenciación con la Dra. Montenegro (condición de Marcelo para avanzar con la PoC).","mw":null,"c4":false,"temp":"Warm","usd0":false},{"id":"608a5929-cd6d-4694-8024-18c766893252","n":"Clínica Policenter","s":"Build consensus","usd":430108,"p":0.3,"close":"2027-01-31","own":"Tomás","nso":null,"ns":"Reunión presencial con Jorge (GG) el 14/10 9:30 en San Bernardo (O'Higgins 237) · Reunión técnica Pablo Contreras (TI) con Fabián Díaz y Manuel (integraciones Telepatía) antes del ","mw":null,"c4":true,"temp":"Warm","usd0":true},{"id":"a2adce38-3ad3-4eff-9ae7-759f99b8a264","n":"FALP","s":"Build consensus","usd":64516,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"FALP propone fecha para la reunión con ingeniería la semana del 21 (Telepatía se ajusta); luego demo funcional. Se mantiene: FALP revisa pricing con gerencia los miércoles; punto d","mw":null,"c4":true,"temp":null,"usd0":false},{"id":"ff0d12e1-fdfb-437d-b2d3-4bb5fd708efe","n":"Grupo Cetep","s":"Build consensus","usd":430108,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"18-sep: Agendar reunión con Guillermo (Founder y Director Médico), Michelle (Calidad), para poder avanzar.","mw":null,"c4":true,"temp":null,"usd0":false},{"id":"ca27482e-d5e1-444d-9acb-713b43187493","n":"Hospital Padre Hurtado","s":"Build consensus","usd":139355,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Sep 18: HPH sube RFI a Mercado Público.  Responder hasta el 5 de octubre (hopefully before).","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"ea206604-9e5c-4f9b-9017-723ac88bc0b3","n":"Inmunomédica","s":"Build consensus","usd":376344,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Mar 22-sep 15:45: reunión Inmunomedica <> Telepatía; preparar el contexto de la cuenta con David Geni y definir el siguiente hito comercial.","mw":null,"c4":true,"temp":null,"usd0":true},{"id":"10e180be-312e-4ed2-a8a5-67f3a70096c4","n":"Instituto Oftalmologia David Bitran","s":"Build consensus","usd":53763,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Jue 24-sep 17:00: reunión virtual con el Instituto; levantar dolores y definir el siguiente hito comercial.","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"312165c6-1eb6-465f-9f6a-bce99dfabc23","n":"Mutual de Seguridad","s":"Build consensus","usd":187704,"p":0.3,"close":"2027-01-14","own":"Tomás","nso":null,"ns":"Ago 27: Esta frenada la siguiente reunión hasta despues de las fiestas patrias","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"6c174be8-9e3a-4293-968d-df56a820110d","n":"RedSalud","s":"Build consensus","usd":279570,"p":0.3,"close":"2026-12-30","own":"Catalina","nso":"Catalina","ns":"Conectar con Francisco Fukuda (dir. médica, lidera IntelliCare) sobre overlap y scope del piloto — definir si Telepatía es complemento o alternativa. Proponer piloto head-to-head v","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"4c92cf7f-96a3-4eb7-af3e-b97674618f01","n":"Sanasalud","s":"Build consensus","usd":430108,"p":0.3,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Queda: respuesta de Diego Moreira al mail del 17-sep (NDA revisado por su abogado + data para el business case + fechas del equipo médico). Coordinar reunión médico con médico (la ","mw":null,"c4":true,"temp":null,"usd0":false},{"id":"5254147e-8d8c-445c-915a-a92de62567fa","n":"Hospital del Profesor","s":"Contract signature","usd":212903,"p":0.9,"close":"2026-09-17","own":"Tomás","nso":null,"ns":"Cerrar el circuito OC/HES con Erik y Rodrigo Martina antes del cierre de mes para la primera facturación. Se mantiene: firmar el contrato en la plataforma DEC (link en la notificac","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"8969d4e7-8959-4f86-9a5d-33a801f2a7da","n":"Celerity","s":"First meeting held","usd":53763,"p":0.1,"close":"2027-02-04","own":"Tomás","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"9d94b58a-13dd-4945-916a-274a32731895","n":"Clínica Universidad de los Andes","s":"First meeting held","usd":483871,"p":0.1,"close":"2027-02-28","own":"Tomás","nso":null,"ns":"Vía principal: coordinar la reunión con el equipo de Sistemas e Información Clínica apenas Loreto envíe horarios (nudge si no llegan la próxima semana); después de la acreditación ","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"111f790b-e5b9-44ab-b102-d23d92cccbad","n":"Doctor 911","s":"First meeting held","usd":64516,"p":0.1,"close":"2026-12-18","own":"Tomás","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"69f3c729-e529-47b1-a64e-c57b47d907c2","n":"Hospital Dr. Gustavo Fricke","s":"First meeting held","usd":0,"p":0.1,"close":"2026-11-30","own":"Tomás","nso":null,"ns":"Conseguir respuesta del Dr. Ahumada (buy-in interno + datos: nº médicos, especialidades, volumen de atenciones) y agendar la visita presencial + mesa técnica y mesa de KPIs. Si no ","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"0fa45ec3-2f62-4716-bbe0-dd09bc807d52","n":"Hospital Sótero del Río","s":"First meeting held","usd":430108,"p":0.1,"close":"2027-02-28","own":"Seba","nso":null,"ns":"Vie 25-sep 10:00: reunión virtual; levantar dolores y definir siguiente hito comercial.","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"bc6fb24d-53f5-4805-9561-2d34de092fcb","n":"ImagenSalud","s":"First meeting held","usd":193548,"p":0.1,"close":"2027-01-01","own":"Tomás","nso":null,"ns":"Coordinar la reunión técnica de integraciones (José de ImagenSalud + equipo Telepatía, arquitectura Mediweb) y la definición interna de ImagenSalud sobre el piloto. Si no responden","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"d0795e45-bf1c-48dc-948f-8ef0535fa8fa","n":"Instituto Nacional del Cáncer","s":"First meeting held","usd":161290,"p":0.1,"close":"2027-02-28","own":"Tomás","nso":"Seba","ns":"24/09/2026: Agendar vía Lobby 2da reunión presencial.||","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"ced9107c-579a-4f18-a1db-3bbd720cae20","n":"Interclinica","s":"First meeting held","usd":774194,"p":0.1,"close":"2027-02-01","own":"Tomás","nso":"Catalina","ns":"Semana 14 Sept: Reactivando Interclínica vía David Geni de Imalab.  Esperando nueva fecha de reunión.  Confirman interés.","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"f9a372c0-5d57-4b19-8d74-641d0c24951d","n":"Isapre Nueva Masvida","s":"First meeting held","usd":107527,"p":0.1,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Jue 1-oct 9:00: reunión presencial con Nueva Masvida (grupo Nexus); levantar dolores del asegurador (auditoría de cuentas, siniestralidad) y definir siguiente hito comercial.","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"429fc8ef-e039-4d58-a949-8c5c2f3e4172","n":"Maiposalud","s":"First meeting held","usd":139785,"p":0.1,"close":"2027-01-31","own":"Tomás","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"dd438ef7-44d6-471e-89fe-2b2acb57e2f3","n":"Servicio de Salud Araucaunía Sur","s":"First meeting held","usd":0,"p":0.1,"close":"2027-01-31","own":"Alejandro","nso":null,"ns":"(SEP21): Discovery presencial en Complejo Padre Las Casas — Sebastián contacta al Dr. Ollanadel (subdirector médico del Servicio de Salud Araucanía Sur) para presentar la propuesta","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"8816cec8-4db0-4318-9110-e171f0e32ad6","n":"Teletón","s":"First meeting held","usd":752688,"p":0.1,"close":"2027-01-31","own":"Seba","nso":null,"ns":"Mié 30-sep 11:00: reunión Teletón <> Telepatía; preparar agenda.","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"49e1acf4-e835-4fa2-958a-69d4ef7940f8","n":"ACHS","s":"Negotiation","usd":752688,"p":0.8,"close":"2026-12-18","own":"Tomás","nso":null,"ns":"","mw":"ACHS","c4":false,"temp":null,"usd0":true},{"id":"87c1b18a-eb99-49a0-9640-035b82fe07f5","n":"Christus Chile","s":"Negotiation","usd":129032,"p":0.8,"close":"2027-01-15","own":"Tomás","nso":null,"ns":"Enviar a Raúl Díaz el cuestionario de datos por WhatsApp y confirmar la reunión con Felipe Moluenda (mié 8:30 o 15:30). Se mantiene: demos de radiología y urgencias + tabla de prec","mw":"UC Christus","c4":false,"temp":null,"usd0":false},{"id":"26bff37f-a1c8-41c9-94cc-efaf60682264","n":"Clinica MEDS","s":"Negotiation","usd":64516,"p":0.8,"close":"2026-12-17","own":"Tomás","nso":null,"ns":"Recibir y firmar el NDA de MEDS; con eso, levantar los requerimientos del flujo de radiología y coordinar la sesión de prueba con el equipo clínico (se mantiene la evaluación de ad","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"bf46260b-c492-46c8-8188-d76510753b0f","n":"Clínica Cruz Nacional","s":"Negotiation","usd":53763,"p":0.8,"close":"2026-10-16","own":"Tomás","nso":null,"ns":"Conseguir firma del NDA y los datos; armar el business case con proyección de ROI y presentarlo idealmente el vie 11-sep (bloque por confirmar con Cruz Nacional).","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"9c3ece19-f0a3-4c0c-b532-030cb7833972","n":"Imalab","s":"Negotiation","usd":107527,"p":0.8,"close":"2026-10-31","own":"Tomás","nso":"Tomás","ns":"Coordinar reunión técnica con Webcode (Tommy-David): flujo médico dentro del RIS y cómo embeber Telepatía sin fricción. Reunión comercial para definir indicadores del piloto y busi","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"0a747c45-6e84-4bc3-b7c0-9b86ac6f0a93","n":"Isapre esencial","s":"Negotiation","usd":25806,"p":0.8,"close":"2026-11-30","own":"Esteban","nso":"Esteban","ns":"1 Oct: Enviamos proforma de contrato y plan de trabajo. Próxima semana avanzamos a reuniones de revisión","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"570c3ed2-e577-47fc-a298-45de849be9b4","n":"Complejo Hospitalario San José","s":"PoC execution","usd":77419,"p":0.6,"close":"2026-12-20","own":"Tomás","nso":"Catalina","ns":"Mié 16-sep 15:00: kickoff y go del despliegue; 16:00-17:00: prueba final con TI (Raúl). Antes del mié: credenciales institucionales habilitadas (despejado el 15-sep: operaciones va","mw":"San José","c4":false,"temp":null,"usd0":false},{"id":"940a48d5-b821-4f55-86b5-f053966024fc","n":"Clinica Las Condes","s":"PoC preparation","usd":193548,"p":0.6,"close":"2026-12-01","own":"Tomás","nso":"Catalina","ns":"CLC confirma fechas de trabajo presencial (para organizar el viaje de los devs; idealmente antes del 18-sep) y si CDSS + auditoría entran al alcance del piloto. Seguir empujando el","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"16a31e39-cd94-43cd-b7c4-9a7df007f875","n":"ACHM","s":"Qualification","usd":0,"p":0,"close":"2026-12-31","own":"Tomás","nso":null,"ns":"Preparar la tabla de pricing municipal referencial (desde-hasta) y agendar la reunión con Daniela post-directorio del lun 7-sep; proponer reunión/demo para avanzar.","mw":null,"c4":false,"temp":null,"usd0":false},{"id":"a9e38bfe-72a1-445d-8055-40241e2f87e1","n":"Atrys CL","s":"Qualification","usd":107527,"p":0,"close":"2027-02-11","own":"Tomás","nso":null,"ns":"Tomás coordina internamente con Nicolás Márquez una nueva fecha para la demo Atrys CL + CO (segunda caída: 3-sep y 16-sep).","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"423742ea-51fb-453f-96c6-91ae27c27fee","n":"CORMUPA","s":"Qualification","usd":86022,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"729d8a02-c163-4c43-abb3-6f1b161896b9","n":"Clínica Alemana Osorno","s":"Qualification","usd":322581,"p":0,"close":"2027-01-31","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"b21ada3b-8b47-4b9d-8b64-488ce2af3731","n":"Clínica Oftalmológica Pasteur","s":"Qualification","usd":86022,"p":0,"close":"2027-01-31","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"0a0419b2-82b3-4568-89db-71fc785d1b1d","n":"Hospital Base Osorno","s":"Qualification","usd":215054,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"2beadbf8-226e-40be-a21c-ff12323cca5b","n":"Hospital Luis Calvo Mackenna","s":"Qualification","usd":161290,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"d3c7ea15-24d5-464b-a553-921439c2256a","n":"Hospital Regional de Talca","s":"Qualification","usd":322581,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"e68ae8bc-c1fa-4f4c-a521-82435e3afa97","n":"Hospital San Borja","s":"Qualification","usd":215054,"p":0,"close":"2027-01-30","own":"Tomás","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"9a5ccd57-942c-4c17-9c85-fb202dc258a6","n":"Hospital Santiago Oriente Dr. Luis Tisné","s":"Qualification","usd":215054,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"ca4ffef1-2fce-44d2-b551-b247ff746999","n":"Kinemed","s":"Qualification","usd":75269,"p":0,"close":"2027-01-31","own":"Seba","nso":null,"ns":"2/10: Hacer FUP, ver si hay oportunidad o descartarlo.","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"b341e6ae-7206-4f33-9f23-134b892b3cb8","n":"SAR La Reina","s":"Qualification","usd":53763,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"29f19194-aaaf-41b5-8efd-4a0dae1b09b4","n":"Salud Huechuraba","s":"Qualification","usd":107527,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"fa2bac37-a3ef-4250-aa7e-0a70c5594691","n":"Servicio de Salud O'Higgins","s":"Qualification","usd":107527,"p":0,"close":"2027-02-28","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"a54566e2-cf61-4e08-b312-af741f106876","n":"Vidaintegra","s":"Qualification","usd":1290323,"p":0,"close":"2027-01-31","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"f73f09b2-596f-4b4f-90c4-4276979938ab","n":"Wiclinic","s":"Qualification","usd":64516,"p":0,"close":"2027-01-31","own":"Seba","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true},{"id":"c20096b4-7844-40ce-973b-03d2bb88f7c2","n":"Xinermed","s":"Qualification","usd":86022,"p":0,"close":"2026-12-18","own":"Tomás","nso":null,"ns":"","mw":null,"c4":false,"temp":null,"usd0":true}],"tasks":[{"t":"Policenter: enviar mail de seguimiento a Rodrigo Muñoz y Pablo Contreras (cc Tomás y Seba)","due":"2026-10-02","who":"Beto"},{"t":"Cedimed: enviar a Illich la propuesta de NDA y el correo de seguimiento con resumen y próximos pasos","due":"2026-10-05","who":"Beto"},{"t":"Cedimed: coordinar con Illich la fecha de la visita a Copiapó (Tomás + director médico)","due":"2026-10-09","who":"Beto"},{"t":"Policenter: armar business case + propuesta para presentación a Jorge (GG) del 14/10","due":"2026-10-13","who":"Beto"},{"t":"Policenter: agendar reunión técnica Pablo Contreras (Gerente TI) con equipo de integraciones Telepatía (hosting, modelo de datos, seguridad, backups, acceso, continuidad)","due":"2026-10-13","who":"Beto"},{"t":"Cedimed: preparar la propuesta comercial y de piloto para la visita a Copiapó","due":"2026-10-14","who":"Beto"},{"t":"@Isapre esencial - New - Sep 2026 Hacer FUP a Nico","due":"2026-10-17","who":"Esteban"}]}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('data').textContent);
+  var SNAP = new Date('2026-10-14T12:00:00');
+  var GOAL = 1000000;
+  var STAGES = ['Qualification','First meeting held','Build consensus','Negotiation','PoC preparation','PoC execution','Contract signature','Ready for use 🎉'];
+  var ES = {'Qualification':'Calificación','First meeting held':'1ª reunión','Build consensus':'Consenso','Negotiation':'Negociación','PoC preparation':'Prep. PoC','PoC execution':'PoC en curso','Contract signature':'Firma','Ready for use 🎉':'En vivo'};
+  var SIGNED = ['Contract signature','Ready for use 🎉'];
+  function $(id){return document.getElementById(id)}
+  function k(n){ if(n>=1e6) return 'USD '+(n/1e6).toFixed(2).replace('.',',')+'M'; return 'USD '+Math.round(n/1000)+'K'; }
+  function kShort(n){ if(n>=1e6) return (n/1e6).toFixed(1).replace('.',',')+'M'; return Math.round(n/1000)+'K'; }
+  function el(tag,cls,txt){var e=document.createElement(tag); if(cls) e.className=cls; if(txt!=null) e.textContent=txt; return e;}
+  function fmtDate(s){ if(!s) return '—'; var m=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic']; var p=s.split('-'); return (+p[2])+'-'+m[+p[1]-1]+(p[0]!=='2026'?'-'+p[0].slice(2):''); }
+
+  var deals = D.deals;
+  var open = deals.filter(function(d){return SIGNED.indexOf(d.s)<0});
+  var signed = deals.filter(function(d){return d.s==='Contract signature'||d.s==='Ready for use 🎉'});
+  var live = deals.filter(function(d){return d.s==='Ready for use 🎉'});
+  var sum = function(a,f){return a.reduce(function(t,d){return t+f(d)},0)};
+  var arrSigned = sum(signed,function(d){return d.usd});
+  var arrLive = sum(live,function(d){return d.usd});
+  var days = Math.round((new Date('2026-12-31T12:00:00')-SNAP)/864e5);
+
+  // Hero
+  $('arrSigned').textContent = k(arrSigned);
+  $('meterFill').style.width = Math.min(100,arrSigned/GOAL*100)+'%';
+  $('pct').textContent = Math.round(arrSigned/GOAL*100)+'%';
+  $('gap').textContent = k(Math.max(0,GOAL-arrSigned));
+  $('days').textContent = days;
+  $('arrLive').textContent = arrLive? k(arrLive) : 'USD 0';
+  $('tOpen').textContent = open.length;
+  var in26 = function(d){return d.close && d.close<='2026-12-31'};
+  $('tW26').textContent = kShort(sum(open.filter(in26),function(d){return d.usd*d.p}));
+  $('tPipe').textContent = kShort(sum(open,function(d){return d.usd}));
+
+  // Camino a la meta
+  var mwOrder = ['ACHS','UC Christus','San José'];
+  var mws = mwOrder.map(function(n){return deals.filter(function(d){return d.mw===n})[0]}).filter(Boolean);
+  var total = arrSigned + sum(mws,function(d){return d.usd});
+  var scale = Math.max(total, GOAL)*1.04;
+  var bar = $('pathBar'), x = 0;
+  function seg(cls,val,label){ var s=el('div','seg '+cls); s.style.left=(x/scale*100)+'%'; s.style.width=(val/scale*100)+'%'; if(val/scale>0.07) s.textContent=label; s.title=label+' · '+k(val); bar.appendChild(s); x+=val; }
+  seg('signed',arrSigned,'Firmado');
+  mws.forEach(function(d){ seg('mw',d.usd,d.mw); });
+  var gl = el('div','goal-line'); gl.style.left=(GOAL/scale*100)+'%'; bar.appendChild(gl);
+  var gt = el('div','goal-tag','Meta USD 1M'); gt.style.left=(GOAL/scale*100)+'%'; bar.appendChild(gt);
+  var leg = $('pathLegend');
+  var sl = el('div','pl signed'); sl.appendChild(el('span','t','Firmado · '+k(arrSigned)));
+  sl.appendChild(el('span','m',signed.map(function(d){return d.n}).join(', ')||'—')); leg.appendChild(sl);
+  mws.forEach(function(d){
+    var p = el('div','pl'); var t = el('span','t',d.mw+' · '+k(d.usd)); p.appendChild(t);
+    var m = el('span','m',ES[d.s]+' · firma '+fmtDate(d.close)+' · '+d.own); p.appendChild(m);
+    if(!d.ns){ var w=el('span',null); w.appendChild(el('span','pill bad','Sin next step')); p.appendChild(w); }
+    leg.appendChild(p);
+  });
+  var cum = el('div','small muted num'); cum.textContent = 'Firmado + los 3 must-win = '+k(total)+' ('+Math.round(total/GOAL*100)+'% de la meta), si firman todos.';
+  $('p-path').insertBefore(cum, $('p-path').children[3]);
+  open.filter(function(d){return d.c4}).sort(function(a,b){return b.usd-a.usd}).forEach(function(d){
+    $('fourth').appendChild(el('span','chip num',d.n+' · '+kShort(d.usd)+' · '+ES[d.s]));
+  });
+
+  // Funnel
+  var f = $('funnel');
+  var byStage = STAGES.map(function(s){var a=deals.filter(function(d){return d.s===s}); return {s:s,n:a.length,usd:sum(a,function(d){return d.usd}),w:sum(a,function(d){return SIGNED.indexOf(d.s)>=0? d.usd : d.usd*d.p})}}).filter(function(r){return r.n>0});
+  var fmax = Math.max.apply(null, byStage.map(function(r){return r.usd}));
+  byStage.forEach(function(r){
+    var row = el('div','f-row');
+    var lab = el('div','f-label'); lab.appendChild(document.createTextNode(ES[r.s]+' ')); lab.appendChild(el('span','c','· '+r.n)); row.appendChild(lab);
+    var b = el('div','f-bar'); var a = el('div','all'); a.style.width=(r.usd/fmax*100)+'%'; b.appendChild(a);
+    var w = el('div','w'); w.style.width=(r.w/fmax*100)+'%'; b.appendChild(w);
+    b.appendChild(el('span','val',kShort(r.usd)+(r.w? ' · pond. '+kShort(r.w):''))); row.appendChild(b);
+    f.appendChild(row);
+  });
+
+  // Deals calientes
+  var hot = open.filter(function(d){return in26(d)||d.mw}).map(function(d){d.score=d.usd*d.p;return d}).filter(function(d){return d.score>0}).sort(function(a,b){return b.score-a.score}).slice(0,8);
+  var tb = $('hot').querySelector('tbody');
+  hot.forEach(function(d){
+    var tr = el('tr');
+    var td = el('td'); td.appendChild(el('span',null,d.n)); if(d.mw){td.appendChild(document.createTextNode(' ')); td.appendChild(el('span','pill ok','Must-win'));} tr.appendChild(td);
+    tr.appendChild(el('td',null,ES[d.s]));
+    tr.appendChild(el('td','r',kShort(d.usd)));
+    tr.appendChild(el('td','num',fmtDate(d.close)));
+    var h = el('td'); var lvl = d.p>=0.6?3:(d.p>=0.3?2:1); var hs = el('span','heat'+(lvl===3?' h3':'')); for(var i=1;i<=3;i++){hs.appendChild(el('i',i<=lvl?'on':null));} h.appendChild(hs);
+    if(!d.ns){h.appendChild(document.createTextNode(' ')); h.appendChild(el('span','pill bad','Sin next step'));}
+    tr.appendChild(h); tb.appendChild(tr);
+  });
+
+  // Personas
+  var snapISO = '2026-10-14';
+  var people = [{who:'Tomás'},{who:'Seba'},{who:'Beto'},{who:'Otros'}];
+  var team = ['Tomás','Seba','Beto'];
+  people.forEach(function(p){
+    var mine = open.filter(function(d){return p.who==='Otros'? team.indexOf(d.own)<0 : d.own===p.who}).sort(function(a,b){return b.usd-a.usd});
+    var tasks = D.tasks.filter(function(t){return p.who==='Otros'? team.indexOf(t.who)<0 : t.who===p.who});
+    var box = el('div','panel person');
+    var head = el('div','person-head'); head.appendChild(el('span','name',p.who==='Otros'?'Otros dueños':p.who)); head.appendChild(el('span','small muted num',mine.length+' deals')); box.appendChild(head);
+    var st = el('div','person-stats');
+    var noNs = mine.filter(function(d){return !d.ns}).length;
+    if(noNs) st.appendChild(el('span','pill bad',noNs+' sin next step'));
+    var overdue = tasks.filter(function(t){return t.due && t.due<snapISO}).length;
+    var today = tasks.filter(function(t){return t.due===snapISO}).length;
+    if(overdue) st.appendChild(el('span','pill bad',overdue+' tareas vencidas'));
+    if(today) st.appendChild(el('span','pill warn',today+' para hoy'));
+    if(!noNs && !overdue && !today) st.appendChild(el('span','pill ok','Al día'));
+    box.appendChild(st);
+    var ul = el('ul','items');
+    tasks.sort(function(a,b){return (a.due||'').localeCompare(b.due||'')}).forEach(function(t){
+      var li = el('li'); var dl = el('span','deal'); dl.appendChild(el('span',null,'Tarea'));
+      dl.appendChild(el('span','pill '+(t.due<snapISO?'bad':(t.due===snapISO?'warn':'ok')), t.due<snapISO?'vencida '+fmtDate(t.due):'vence '+fmtDate(t.due)));
+      li.appendChild(dl); li.appendChild(el('span','txt',t.t)); ul.appendChild(li);
+    });
+    var shown = mine.slice(0, p.who==='Beto'?3:5);
+    shown.forEach(function(d){
+      var li = el('li'); var dl = el('span','deal'); dl.appendChild(el('span',null,d.n)); dl.appendChild(el('span','small muted num',kShort(d.usd)));
+      if(d.mw) dl.appendChild(el('span','pill ok','Must-win'));
+      if(!d.ns) dl.appendChild(el('span','pill bad','Sin next step'));
+      li.appendChild(dl); if(d.ns) li.appendChild(el('span','txt',d.ns.length>140?d.ns.slice(0,140)+'…':d.ns)); ul.appendChild(li);
+    });
+    if(!tasks.length && !shown.length){ ul.appendChild(el('li','txt','Sin deals ni tareas a su nombre en Attio.')); }
+    box.appendChild(ul);
+    if(mine.length>shown.length) box.appendChild(el('span','more','+'+(mine.length-shown.length)+' deals más'));
+    $('people').appendChild(box);
+  });
+
+  // Alertas
+  var H = [
+    {v:open.filter(function(d){return !d.ns}).length, l:'deals abiertos sin next step', r:'Regla: todo deal abierto tiene un next step', c:'bad'},
+    {v:open.filter(function(d){return !d.nso}).length, l:'sin responsable del next step', r:'Regla: cada paso tiene dueño', c:'bad'},
+    {v:D.tasks.filter(function(t){return t.due && t.due<snapISO}).length, l:'tareas vencidas sin cerrar', r:'Regla: lo nuestro se hace el mismo día', c:'bad'},
+    {v:open.filter(function(d){return d.usd0}).length, l:'deals con ARR USD en 0', r:'Distorsiona el total en USD', c:'warn'},
+    {v:open.filter(function(d){return !d.temp}).length, l:'sin temperatura', r:'Se reemplaza por el calor calculado', c:'warn'}
+  ];
+  H.forEach(function(h){ var t=el('div','h-tile '+h.c); t.appendChild(el('span','v num',h.v)); t.appendChild(el('span','l',h.l)); t.appendChild(el('span','rule',h.r)); $('health').appendChild(t); });
+
+  // Celebración
+  var cv = $('confetti'), ctx = cv.getContext('2d'), parts = [], raf = null;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function size(){ cv.width = innerWidth*devicePixelRatio; cv.height = innerHeight*devicePixelRatio; }
+  var COLORS = ['#055A35','#9FA782','#6CC08F','#F6F5EB','#E3A93C','#1C211C'];
+  function burst(){
+    size(); parts = [];
+    for(var i=0;i<260;i++){ parts.push({x:cv.width*(0.2+Math.random()*0.6), y:cv.height*0.35, vx:(Math.random()-0.5)*18*devicePixelRatio, vy:(-Math.random()*16-6)*devicePixelRatio, r:(4+Math.random()*6)*devicePixelRatio, a:Math.random()*6.28, va:(Math.random()-0.5)*0.4, c:COLORS[i%COLORS.length], life:0}); }
+    if(!raf) tick();
+  }
+  function tick(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    var alive = 0;
+    parts.forEach(function(p){ p.life++; p.vy += 0.45*devicePixelRatio; p.vx*=0.99; p.x+=p.vx; p.y+=p.vy; p.a+=p.va; if(p.y<cv.height+40){alive++; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.a); ctx.fillStyle=p.c; ctx.fillRect(-p.r/2,-p.r/4,p.r,p.r/2); ctx.restore();} });
+    raf = alive? requestAnimationFrame(tick) : null;
+    if(!alive) ctx.clearRect(0,0,cv.width,cv.height);
+  }
+  $('celebrate').addEventListener('click', function(){
+    var t = $('toast'); t.textContent=''; t.appendChild(document.createTextNode('¡Firmamos!')); t.appendChild(el('small',null,'Ejemplo: así se vería cuando un deal pasa a Contract signature'));
+    t.classList.add('show'); setTimeout(function(){t.classList.remove('show')}, 2600);
+    if(!reduce) burst();
+  });
+})();
+</script>
