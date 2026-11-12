@@ -100,7 +100,7 @@
   .col .cab small { color: var(--tinta-3); font-size: 12px; }
   .col.meta .cab { border-color: var(--verde); }
   body.tv .col.meta .cab { border-color: var(--mineral); }
-  .pila { display: flex; flex-direction: column; gap: 3px; position: relative; }
+  .pila { display: flex; flex-direction: column; gap: 2px; position: relative; }
   .deal { border-radius: 7px; background: var(--tarjeta-2); border: 1px solid var(--borde); padding: 3px 8px; display: flex; flex-direction: column; justify-content: center;
     overflow: hidden; cursor: pointer; text-align: left; color: inherit; font-size: 12px; line-height: 1.2; min-height: 0;
     animation: entra .5s cubic-bezier(.2,.8,.2,1) both; transition: transform .15s; position: relative; }
@@ -110,6 +110,7 @@
   .deal .arr { color: var(--tinta-2); font-size: 11.5px; flex: none; }
   .deal .l2 { display: flex; gap: 4px; align-items: center; margin-top: 3px; font-size: 11px; color: var(--tinta-2); white-space: nowrap; overflow: hidden; }
   .deal.chico .l2 { display: none; }
+  .deal.mini, body.tv .deal.mini { padding: 0 !important; border-radius: 2px; border-width: 0 !important; font-size: 0; box-sizing: border-box; } .deal.mini .l1, .deal.mini .l2 { display: none; }
   .deal .own { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 4px; padding: 0 4px; font-weight: 600; }
   .deal.sube { background: var(--sube); border-color: var(--sube-borde); }
   .deal.sube::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sube-borde); }
@@ -157,6 +158,13 @@
   .lista ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
   .lista li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13.5px; }
   .lista li:hover { background: var(--tarjeta-2); } .lista li small { color: var(--tinta-3); }
+  .owners { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .owners th { text-align: left; font-weight: 600; color: var(--tinta-3); font-size: 12px; padding: 6px 8px; border-bottom: 1px solid var(--borde); }
+  .owners td { padding: 9px 8px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  .owners tr[data-owner] { cursor: pointer; } .owners tr[data-owner]:hover td { background: var(--tarjeta-2); }
+  .owners .num { text-align: right; white-space: nowrap; } .owners .mal { color: var(--critico); font-weight: 600; }
+  .owners small { color: var(--tinta-3); }
+  .tabla-scroll { overflow-x: auto; }
   .g-sem { cursor: pointer; } .g-sem:hover .hit { fill: var(--tarjeta-2); }
 
   /* Personas */
@@ -478,11 +486,14 @@ function pintarKanban(cont, altoDisponible, extra = esTV() ? 330 : 250, reintent
   const deals = dealsFiltrados();
   const cols = COLUMNAS.map((c) => ({ ...c, deals: deals.filter((d) => c.etapas.includes(d.etapa)).sort((a, b) => b.arrUsd - a.arrUsd) }));
   if (JAIME || (esTV() && esMovil())) return (cont.innerHTML = kanbanCompleto(cols));
-  const GAP = 3;
+  const GAP = 2;
   const alto = Math.max(260, altoDisponible);
-  // Escala común: la altura de cada deal es proporcional a su ARR en todas las columnas.
+  // Escala común: la altura de cada deal es proporcional a su ARR en todas las columnas (pedido de Beto, 12-nov).
+  // El mínimo es una franja delgada, para que las columnas con muchos deals chicos no aplasten a los grandes;
+  // las franjas no llevan texto y muestran el nombre al pasar el mouse o al tocarlas.
   const maxN = Math.max(1, ...cols.map((c) => c.deals.length));
-  const MIN = Math.max(16, Math.min(esTV() ? 30 : 28, (alto - GAP * maxN) / maxN));
+  // Las franjas usan como máximo un tercio del alto, así siempre queda espacio para que el ARR mande.
+  const MIN = Math.max(1.5, Math.min(5, (alto / 3 - GAP * maxN) / maxN));
   const altoCol = (c, k) => c.deals.reduce((s, d) => s + Math.max(MIN, d.arrUsd * k), 0) + GAP * Math.max(0, c.deals.length - 1) + (c.meta ? extra : 0);
   let lo = 0, hi = 1;
   while (cols.every((c) => altoCol(c, hi) <= alto) && hi < 1e3) hi *= 2;
@@ -497,7 +508,7 @@ function pintarKanban(cont, altoDisponible, extra = esTV() ? 330 : 250, reintent
         const mov = claseMovimiento(d);
         const ult = d.movimientos[d.movimientos.length - 1];
         const est = estadoDeal(d);
-        const clases = ['deal', mov, 'est-' + est, esNuevo(d) ? 'nuevo' : '', d.firmado ? 'firmado' : '', h < 40 ? 'chico' : ''].join(' ');
+        const clases = ['deal', mov, 'est-' + est, esNuevo(d) ? 'nuevo' : '', d.firmado ? 'firmado' : '', h < 40 ? 'chico' : '', h < 15 ? 'mini' : ''].join(' ');
         const alerta = d.estancado ? `<span class="punto critico" title="Estancado: ${esc(d.motivoRitmo ?? '')}"></span>` : d.ritmo === 'espera' ? `<span class="punto aviso" title="En espera: ${esc(d.motivoRitmo ?? '')}"></span>` : '';
         const detalle = [
           d.owner ? `<span class="own">${esc(d.owner)}</span>` : '',
@@ -626,7 +637,8 @@ function svgCamino(ancho, alto) {
   let d = `M${x(t0)},${y(0)}`, acc = 0;
   const puntos = [];
   for (const f of c.firmas) {
-    const t = new Date(f.fecha + 'T12:00:00').getTime();
+    // Lo firmado antes del lanzamiento (17-ago) parte en el día 0.
+    const t = Math.max(t0, new Date(f.fecha + 'T12:00:00').getTime());
     d += ` H${x(t)} V${y(f.acumuladoUsd)}`;
     acc = f.acumuladoUsd;
     puntos.push({ x: x(t), y: y(acc), f });
@@ -712,7 +724,7 @@ function svgDemanda(ancho, alto) {
       const he = y(x.equipo), ht = y(x.tgp);
       const ult = i === s.length - 1;
       const [, mm, dd] = x.semana.split('-');
-      return `<g class="g-sem" data-semana="${i}" style="opacity:${ult ? 0.7 : 1}"><rect class="hit" x="${cx - paso / 2}" y="0" width="${paso}" height="${alto}" fill="transparent"/>
+      return `<g class="g-sem" data-semana="${i}" style="opacity:${ult ? 0.7 : 1}"><rect class="hit" x="${cx - paso / 2}" y="0" width="${Math.max(0, paso)}" height="${alto}" fill="transparent"/>
         ${x.equipo ? `<rect x="${cx - bw / 2}" y="${base - he}" width="${bw}" height="${he}" rx="3" fill="var(--barra)"><animate attributeName="height" from="0" to="${he}" dur=".7s" begin="${i * 0.05}s"/><animate attributeName="y" from="${base}" to="${base - he}" dur=".7s" begin="${i * 0.05}s"/></rect>` : ''}
         ${x.tgp ? `<rect x="${cx - bw / 2}" y="${base - he - ht - (he ? 2 : 0)}" width="${bw}" height="${ht}" rx="3" fill="var(--barra-2)"/>` : ''}
         <text x="${cx}" y="${base - he - ht - 8}" text-anchor="middle" style="font-weight:700;fill:var(--tinta)">${x.tgp + x.equipo}</text>
@@ -737,6 +749,85 @@ function htmlFuentes() {
   return `<p class="tgpresumen">En estas 10 semanas TGP generó <b>${t}</b> de ${n} deals nuevos (${n ? Math.round((t / n) * 100) : 0}%), con ARR ${usd(arr)}. Toca una barra para ver los deals de esa semana por fuente.</p>
     <div class="fuentes">${fuentes.map((f) => `<button class="pill" data-fuente="${esc(f)}" aria-pressed="${f === 'TGP'}">${esc(f)}<small>${cuenta[f]}</small></button>`).join('')}</div>`;
 }
+
+// ---------- Pipeline por owner (tarea del 4-nov: deals por owner y dónde se traba cada uno) ----------
+function htmlOwners() {
+  const abiertos = datos.deals.filter((d) => d.abierto);
+  const owners = [...new Set(abiertos.map((d) => d.owner ?? 'Sin owner'))];
+  const filas = owners.map((o) => {
+    const xs = abiertos.filter((d) => (d.owner ?? 'Sin owner') === o);
+    const est = xs.filter((d) => d.estancado);
+    const traba = {};
+    for (const d of est) traba[COLUMNAS[columnaDe(d.etapa)]?.t ?? d.etapa] = (traba[COLUMNAS[columnaDe(d.etapa)]?.t ?? d.etapa] ?? 0) + 1;
+    const dondeTraba = Object.entries(traba).sort((a, b) => b[1] - a[1])[0];
+    const urgente = [...est].sort((a, b) => b.arrUsd - a.arrUsd)[0];
+    const motivos = {};
+    for (const d of est) { const m = (d.motivoRitmo ?? '').replace(/,? ?(escrito )?hace .*| el .*| del .*/, ''); motivos[m] = (motivos[m] ?? 0) + 1; }
+    const motivo = Object.entries(motivos).sort((a, b) => b[1] - a[1])[0];
+    return {
+      o, n: xs.length, arr: xs.reduce((a, d) => a + d.arrUsd, 0), tgp: xs.filter((d) => d.tgp).length,
+      est: est.length, arrEst: est.reduce((a, d) => a + d.arrUsd, 0),
+      sinNS: xs.filter((d) => !d.nextStep).length, vencidos: xs.filter((d) => d.vencido).length,
+      avanzaron: xs.filter((d) => d.movimientos.some((m) => m.avance)).length,
+      dondeTraba, urgente, motivo,
+    };
+  }).sort((a, b) => b.arr - a.arr);
+  return `<div class="tabla-scroll"><table class="owners">
+    <thead><tr><th>Owner</th><th class="num">Deals</th><th class="num">ARR abierto</th><th class="num">De TGP</th><th class="num">Avanzaron 7 d</th><th class="num">Estancados</th><th class="num">Sin next step</th><th class="num">Vencidos</th><th>Dónde se traba</th></tr></thead>
+    <tbody>${filas.map((f) => `<tr data-owner="${esc(f.o)}">
+      <td><b>${esc(f.o)}</b></td><td class="num">${f.n}</td><td class="num">${usd(f.arr)}</td><td class="num">${f.tgp}</td><td class="num">${f.avanzaron}</td>
+      <td class="num ${f.est ? 'mal' : ''}">${f.est}${f.est ? ` <small>· ${usd(f.arrEst)}</small>` : ''}</td>
+      <td class="num ${f.sinNS ? 'mal' : ''}">${f.sinNS}</td><td class="num ${f.vencidos ? 'mal' : ''}">${f.vencidos}</td>
+      <td>${f.est ? `${esc(f.dondeTraba[0])} (${f.dondeTraba[1]})${f.motivo?.[0] ? ` · <small>sobre todo: ${esc(f.motivo[0].toLowerCase())}</small>` : ''}<br><small>Primero: ${esc(f.urgente.cuenta)} (${usd(f.urgente.arrUsd)})</small>` : '<small>Nada estancado</small>'}</td>
+    </tr>`).join('')}</tbody></table></div>
+    <p class="nota">Abiertos de Chile, sin los filtros de arriba. Estancado = la regla del 9-nov (next step vencido o sin fecha y nada que lo justifique). Toca un owner para ver sus deals.</p>`;
+}
+function abrirOwner(o) {
+  abrirLista(`Deals de ${o}`, 'Abiertos, agrupados por fuente', datos.deals.filter((d) => d.abierto && (d.owner ?? 'Sin owner') === o));
+}
+
+// ---------- Evolución del pipeline semana a semana (1:1 con Tomi, 10-nov) ----------
+let evoModo = 'arr';
+const COLOR_ETAPA = ['var(--olivo-200)', 'var(--olivo-300)', 'var(--olivo-500)', 'var(--olivo-700)', 'var(--verde)', 'var(--carbon)'];
+function evoSemana(x) {
+  return COLUMNAS.map((c) => c.etapas.reduce((a, e) => ({ n: a.n + (x.porEtapa[e]?.n ?? 0), arr: a.arr + (x.porEtapa[e]?.arrUsd ?? 0) }), { n: 0, arr: 0 }));
+}
+function svgEvolucion(ancho, alto) {
+  const s = datos.evolucion.map((x) => ({ ...x, cols: evoSemana(x) }));
+  const val = (c) => (evoModo === 'arr' ? c.arr : c.n);
+  const m = { t: 22, r: 8, b: 30, l: 8 };
+  const W = ancho - m.l - m.r, H = alto - m.t - m.b;
+  const max = Math.max(1, ...s.map((x) => x.cols.reduce((a, c) => a + val(c), 0)));
+  const paso = W / s.length, bw = Math.min(54, paso * 0.62);
+  return `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Pipeline al cierre de cada semana, por etapa">
+    <line class="eje" x1="${m.l}" x2="${m.l + W}" y1="${m.t + H}" y2="${m.t + H}"/>
+    ${s.map((x, i) => {
+      const cx = m.l + paso * i + paso / 2;
+      let y0 = m.t + H;
+      const ult = i === s.length - 1;
+      const [, mm, dd] = x.semana.split('-');
+      const tot = x.cols.reduce((a, c) => a + val(c), 0);
+      const seg = x.cols.map((c, j) => {
+        const h = (val(c) / max) * H;
+        if (!h) return '';
+        y0 -= h;
+        return `<rect x="${cx - bw / 2}" y="${y0}" width="${bw}" height="${Math.max(0, h - 1)}" fill="${COLOR_ETAPA[j]}"><title>${COLUMNAS[j].t}: ${c.n} deals · ${usd(c.arr)}</title></rect>`;
+      }).join('');
+      return `<g>${seg}<text x="${cx}" y="${y0 - 7}" text-anchor="middle" style="font-weight:700;fill:var(--tinta)">${evoModo === 'arr' ? usd(tot) : tot}</text>
+        <text x="${cx}" y="${alto - 8}" text-anchor="middle">${ult ? 'hoy' : `${Number(dd)}-${MESES[Number(mm) - 1]}`}</text></g>`;
+    }).join('')}
+  </svg>`;
+}
+function resumenEvolucion() {
+  const s = datos.evolucion;
+  const a = evoSemana(s[s.length - 1]), b = evoSemana(s[s.length - 5] ?? s[0]);
+  const abierto = (cs) => cs.slice(0, -1).reduce((x, c) => ({ n: x.n + c.n, arr: x.arr + c.arr }), { n: 0, arr: 0 });
+  const avanz = (cs) => cs.slice(3).reduce((x, c) => ({ n: x.n + c.n, arr: x.arr + c.arr }), { n: 0, arr: 0 });
+  const dif = (v) => `${v >= 0 ? '▲' : '▼'} ${usd(Math.abs(v))}`;
+  const [ha, hb, va, vb] = [abierto(a), abierto(b), avanz(a), avanz(b)];
+  return `Hoy hay <b>${usd(ha.arr)}</b> abierto en ${ha.n} deals, contra ${usd(hb.arr)} en ${hb.n} hace 4 semanas (${dif(ha.arr - hb.arr)}). De Negotiation en adelante: <b>${usd(va.arr)}</b> en ${va.n} deals, contra ${usd(vb.arr)} en ${vb.n} (${dif(va.arr - vb.arr)}).`;
+}
+const leyendaEvolucion = () => `<div class="leyenda">${COLUMNAS.map((c, j) => `<span><i style="background:${COLOR_ETAPA[j]}"></i>${c.t}</span>`).join('')}</div>`;
 
 // ---------- Carrera de países ----------
 // Por defecto muestra el primer año (o el doble de lo que lleva Chile), para comparar a la misma altura.
@@ -836,7 +927,10 @@ document.addEventListener('click', (e) => {
   if (fu && !esTV()) abrirFuente(fu.dataset.fuente);
   const et = e.target.closest('[data-etapa]');
   if (et && !esTV()) abrirEtapa(et.dataset.etapa);
-  if (e.target.id === 'paises-rango') { paisesTodo = !paisesTodo; pintarPanel(); }
+  const ow = e.target.closest('[data-owner]');
+  if (ow && !esTV()) abrirOwner(ow.dataset.owner);
+  const ev = e.target.closest('[data-evo]');
+  if (ev) { evoModo = ev.dataset.evo; pintarPanel(); }
   const f = e.target.closest('button[data-f]');
   if (f) { filtro[f.dataset.f] = f.dataset.f === 'soloMovidos' ? !filtro.soloMovidos : f.dataset.v; pintarPanel(); }
 });
@@ -870,16 +964,27 @@ function pintarPanel() {
     <section class="card"><header><h2>Demand generation</h2><span class="sub">${resumenDemanda()}</span><span class="der">${leyendaDemanda}</span></header><div class="grafico" id="g-demanda"></div>${htmlFuentes()}</section>
   </div>
 
-  <section class="card"><header><h2>Carrera de países</h2><span class="sub">ARR firmado acumulado, como si todos hubiéramos partido el mismo día</span><span class="der"><button class="pill" id="paises-rango" aria-pressed="${paisesTodo}">${paisesTodo ? 'Ver el primer año' : 'Ver toda la historia'}</button></span></header>
+  <section class="card"><header><h2>Pipeline por owner</h2><span class="sub">cuánto lleva cada uno y dónde se le traban los deals</span></header>${htmlOwners()}</section>
+
+  <section class="card"><header><h2>Evolución del pipeline</h2><span class="sub">cómo estaba el pipeline al cierre de cada semana, por etapa</span>
+    <span class="der"><button class="pill" data-evo="arr" aria-pressed="${evoModo === 'arr'}">ARR</button> <button class="pill" data-evo="n" aria-pressed="${evoModo === 'n'}">Deals</button></span></header>
+    <div class="grafico" id="g-evolucion"></div>${leyendaEvolucion()}
+    <p class="tgpresumen">${resumenEvolucion()}</p>
+    <p class="nota">Reconstruido con el historial de etapas de Attio. Cada deal cuenta con su ARR de hoy, porque Attio no guarda el ARR de semanas anteriores. No incluye Closed lost.</p></section>
+
+  <section class="card"><header><h2>Carrera de países</h2><span class="sub">ARR firmado acumulado, como si todos hubiéramos partido el mismo día. Arriba el primer año; abajo toda la historia, con Colombia y Brasil después del primer año.</span></header>
     <div class="grafico" id="g-paises"></div>
-    <p class="nota">Día 0 provisorio: el primer deal o la primera reunión registrada en Attio (Chile ${fecha(datos.paises[0].inicio)}). Colombia y Brasil se cargaron a Attio en nov-2025, así que su día 0 real puede ser anterior. Se ajusta en lib/config.js cuando Tomi confirme las fechas.</p></section>
+    <div class="grafico" id="g-paises-todo" style="margin-top:18px"></div>
+    <p class="nota">Día 0 de Chile: ${fecha(datos.paises[0].inicio)}, el lanzamiento con la llegada de Tomi. Colombia y Brasil siguen provisorios: se cargaron a Attio en nov-2025, así que su día 0 real puede ser anterior. Se ajusta en lib/config.js.</p></section>
 
   <section class="card"><header><h2>Lo que le toca a cada uno</h2><span class="sub">next steps donde la pelota es nuestra, tareas de Attio y lo que espera al cliente</span></header>${htmlPersonas()}</section>`;
   const ancho = (id) => $(id).clientWidth;
   $('#g-camino').innerHTML = svgCamino(ancho('#g-camino'), 300);
   pintarKanban($('#g-kanban'), 620);
   $('#g-demanda').innerHTML = svgDemanda(ancho('#g-demanda'), 260);
-  $('#g-paises').innerHTML = svgPaises(ancho('#g-paises'), 380);
+  $('#g-paises').innerHTML = svgPaises(ancho('#g-paises'), 340, false);
+  $('#g-paises-todo').innerHTML = svgPaises(ancho('#g-paises-todo'), 340, true);
+  $('#g-evolucion').innerHTML = svgEvolucion(ancho('#g-evolucion'), 280);
   requestAnimationFrame(() => document.querySelectorAll('[data-ancho]').forEach((el) => (el.style.width = el.dataset.ancho)));
   scrollTo(0, scroll);
 }

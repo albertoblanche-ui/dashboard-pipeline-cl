@@ -58,7 +58,8 @@ export const MUST_WIN = [/\bACHS\b/i];
 // Colombia y Brasil se cargaron a Attio en nov-2025, así que su día 0 real puede ser anterior.
 // Reemplazar por la fecha real de entrada de cada país cuando Tomi la confirme.
 export const PAISES = [
-  { nombre: 'Chile', attio: 'Chile', inicio: '2026-06-12' },
+  // Chile: lanzamiento el 17-ago-2026, el día que entró Tomi (pedido de Tomi, 4-nov). Mueve también el inicio del Camino al millón.
+  { nombre: 'Chile', attio: 'Chile', inicio: '2026-08-17' },
   { nombre: 'Colombia', attio: 'Colombia', inicio: '2025-01-22' },
   { nombre: 'Brasil', attio: 'Brazil', inicio: '2025-07-04' },
   { nombre: 'Argentina', attio: 'Argentina', inicio: '2026-08-31' },

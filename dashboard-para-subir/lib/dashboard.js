@@ -276,6 +276,27 @@ export function construirDashboard(raw, ahora = new Date()) {
     return { semana: desde.toISOString().slice(0, 10), tgp: xs.filter((d) => d.tgp).length, equipo: xs.filter((d) => !d.tgp).length, arrUsd: suma(xs, 'arrUsd'), tgpArrUsd: suma(xs.filter((d) => d.tgp), 'arrUsd'), ids: xs.map((d) => d.id) };
   });
 
+  // Evolución del pipeline (1:1 con Tomi, 10-nov): cómo estaba el pipeline al cierre de cada una de las últimas 8 semanas,
+  // reconstruido con el historial de etapas de Attio. El ARR es el de hoy de cada deal (Attio no guarda el ARR histórico).
+  const etapaAl = (d, t) => {
+    if (new Date(d.creado) > t) return null;
+    const h = raw.historial[d.id] ?? [];
+    const v = h.find((x) => new Date(x.active_from) <= t && (!x.active_until || new Date(x.active_until) > t));
+    return v ? titulo(v) : null;
+  };
+  const evolucion = Array.from({ length: 8 }, (_, i) => {
+    const desde = new Date(lunes(ahora) - (7 - i) * 7 * DIA);
+    const corte = new Date(Math.min(+desde + 7 * DIA, +ahora));
+    const porEtapa = {};
+    for (const d of deals) {
+      const e = etapaAl(d, corte);
+      if (!e || ETAPAS_CERRADAS.includes(e)) continue;
+      const x = (porEtapa[e] ??= { n: 0, arrUsd: 0, tgp: 0 });
+      x.n++; x.arrUsd += d.arrUsd; if (d.tgp) x.tgp++;
+    }
+    return { semana: desde.toISOString().slice(0, 10), corte: corte.toISOString(), porEtapa };
+  });
+
   // Carrera de países: ARR firmado acumulado por días desde el día 0 de cada país.
   function acumular(firmas) {
     let total = 0;
@@ -350,6 +371,7 @@ export function construirDashboard(raw, ahora = new Date()) {
       anterior: resumenPeriodo(new Date(ahora - 14 * DIA), new Date(ahora - 7 * DIA)),
     },
     demanda,
+    evolucion,
     camino: { desde: PAISES.find((p) => p.attio === ATTIO.pais)?.inicio, hasta: META_FECHA, firmas: acumular(firmados.map((d) => ({ fecha: d.firmaContrato, cuenta: d.cuenta, arrUsd: d.arrUsd }))) },
     paises,
     deals,

@@ -15,7 +15,9 @@ Abre http://localhost:3000/panel (Panel), http://localhost:3000 (torre) y http:/
 - Modo TV (botón o `?tv=1`): fondo oscuro, rota carrera de deals, camino + semana, pipeline + demanda y lo de cada persona en páginas de 9. Flechas ← → cambian de pantalla, Esc vuelve al Panel.
 - Cuando aparece un deal nuevo firmado, celebra 60 s. Probar: `/panel?tv=1&celebrar=1`.
 - Vista de Jaime Mañalich (`/jaime`, clave propia en `JAIME_PASSWORD`): lista simple de Primera reunión en adelante, solo institución, ARR y color. Verde: firmado o subió de etapa en 14 días. Rojo: más de 20 días en la misma etapa. Blanco: el resto. Reglas en `lib/jaime.js`. El link viejo `/panel?jaime=1` redirige ahí.
-- Carrera de países: el día 0 de cada país es provisorio (`PAISES` en `lib/config.js`).
+- Carrera de países: Chile parte el 17-ago-2026 (lanzamiento con Tomi); Colombia y Brasil siguen provisorios (`PAISES` en `lib/config.js`). En el Panel se ven el primer año y toda la historia.
+- 9-nov: Demand generation y Pipeline por etapa muestran lo de TGP (campo "Opportunity source"); las barras, las fuentes y las etapas se tocan para ver la lista de deals.
+- 10-nov: Pipeline por owner (dónde se traba cada uno) y Evolución del pipeline (cómo estaba al cierre de cada una de las últimas 8 semanas, con el historial de etapas).
 
 ## Archivos
 - `lib/attio.js`: lectura de Attio (deals de Chile, historial de etapas, listas CL - Pipeline y TGP, tareas del equipo).
