@@ -155,11 +155,27 @@
   .t tr.tot td { font-weight: 600; background: var(--tarjeta-2); }
 
   /* Mapa de Chile */
-  .mapa { display: grid; grid-template-columns: minmax(340px, 58%) 1fr; gap: 22px; height: 100%; min-height: 0; }
-  .mapa-izq { display: flex; flex-direction: column; gap: 8px; min-height: 0; } .mapa-izq .grafico { flex: 1; min-height: 0; }
+  .mapa2 { display: grid; grid-template-columns: 110px minmax(0, 1fr) minmax(300px, 30%); gap: 16px; height: 100%; min-height: 0; }
+  .mapa2 .mini { min-height: 0; background: var(--fondo); border: 1px solid var(--borde); border-radius: 12px; cursor: crosshair; touch-action: none; }
+  .mapa2 .principal { position: relative; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+  .mapa2 .lienzo { flex: 1; min-height: 0; background: var(--fondo); border: 1px solid var(--borde); border-radius: 14px; overflow: hidden; cursor: grab; touch-action: none; }
+  .mapa2 .lienzo.arrastrando { cursor: grabbing; }
+  .mapa2 .lienzo svg { display: block; }
+  .mapa2 .zonas { position: absolute; top: 10px; left: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .mapa2 .zonas .btn { box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
+  .mapa2 .ley-mapa { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .grad { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-2); }
+  .grad i { width: 110px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--verde) 12%, var(--tarjeta-2)), var(--verde)); }
+  .mapa2 .lado { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+  .mapa2 .lado .tabla-scroll { flex: 1; min-height: 0; }
+  .en-pantalla { background: var(--tarjeta-2); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
+  .ep-cab { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .ep-cab b { font-family: var(--serif); font-size: 17px; } .ep-cab span { font-size: 12.5px; color: var(--tinta-2); }
+  .ep-nums { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .ep-nums div { background: var(--tarjeta); border-radius: 8px; padding: 6px 8px; font-size: 11.5px; color: var(--tinta-2); }
+  .ep-nums b { display: block; font-family: var(--serif); font-size: 18px; color: var(--tinta); }
+  .ep-top { display: flex; flex-wrap: wrap; gap: 5px; } .ep-top .pill { background: var(--tarjeta); }
+  .ops-etq { font-size: 11.5px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .05em; margin-left: 4px; }
   .barra-r { display: block; height: 8px; border-radius: 4px; background: var(--tarjeta-2); overflow: hidden; } .barra-r i { display: block; height: 100%; background: var(--acento); }
-  .mapa-der { display: flex; flex-direction: column; min-height: 0; }
-  .mapa-der .tabla-scroll { flex: 1; min-height: 0; }
   .mapa-t tr[data-region] { cursor: pointer; } .mapa-t tr.sel td { background: var(--acento-suave); }
   .mapa-t td { padding: 7px 10px; }
 
@@ -323,7 +339,7 @@ const op = Object.assign({
   'tgp.periodo': '12',
   'paises.vista': 'anio',
   'pend.tab': 'resumen',
-  'mapa.deals': 'abiertos', 'mapa.color': 'estado',
+  'mapa.deals': 'abiertos', 'mapa.color': 'estado', 'mapa.pintar': 'arr',
 }, guardado('vu-op', {}));
 let actual = Math.max(0, Number(location.hash.slice(1)) - 1 || 0);
 let auto = params.has('auto');
@@ -729,10 +745,10 @@ function diapoPermanencia() {
   const max = Math.max(10, ...filas.flatMap((f) => [f.e.limite ?? 0, ...f.s.map((x) => x.p75)])) * 1.08;
   const peor = filas.filter((f) => f.e.limite && f.s[0].n >= 3).map((f) => ({ f, r: f.s[0].med / f.e.limite })).sort((a, b) => b.r - a.r)[0];
   return {
-    html: `<div class="diapo una">${card('Días de permanencia por etapa', 'cuántos días se queda un deal en cada etapa: la barra es la mediana, la marca es el p75 y la línea punteada lo esperado',
+    html: `<div class="diapo una">${card('Días de permanencia por etapa', 'cuántos días se queda un deal en cada etapa: la barra fuerte es la mediana (la mitad de los deals sale antes), la clara llega al p75 (3 de cada 4) y el rombo es lo esperado',
       ops('perm.curso', [['todas', 'Incluye las que siguen en curso'], ['cerradas', 'Solo estadías terminadas']]) + ops('perm.comparar', [['no', 'Todos juntos'], ['origen', 'TGP vs equipo']]),
       '<div class="grafico" id="g-perm"></div>',
-      `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px">${leyenda([...series.map((x) => [x.color, `Mediana ${x.t === 'Todos' ? '' : x.t}`]), ['var(--tinta)', 'p75 (marca)']])}
+      `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px"><div class="leyenda">${series.map((x) => `<span><i style="background:${x.color}"></i>Mediana${x.t === 'Todos' ? '' : ' ' + x.t}</span><span><i style="background:${x.color};opacity:.32"></i>hasta el p75${x.t === 'Todos' ? '' : ' ' + x.t}</span>`).join('')}<span>◆ días esperados de la etapa</span></div>
         ${peor ? `<p class="resumen" style="margin:0">Más lenta frente a lo esperado: <b>${esc(etapaCorta(peor.f.e.nombre))}</b>, mediana ${peor.f.s[0].med} días contra ${peor.f.e.limite} esperados.</p>` : ''}</div>`)}</div>`,
     pintar(el) {
       const g = el.querySelector('#g-perm');
@@ -748,13 +764,14 @@ function diapoPermanencia() {
         ${filas.map((f, i) => {
           const y0 = m.t + i * filaH + (filaH - bh * series.length) / 2;
           return `<text x="${m.l - 12}" y="${m.t + i * filaH + filaH / 2 + 4}" text-anchor="end" style="font-weight:600;fill:var(--tinta)">${esc(etapaCorta(f.e.nombre))}</text>
-            ${f.e.limite ? `<line x1="${x(f.e.limite)}" x2="${x(f.e.limite)}" y1="${y0 - 4}" y2="${y0 + bh * series.length + 4}" stroke="var(--estancado)" stroke-width="2" stroke-dasharray="4 3"/>` : ''}
+            ${f.e.limite ? `<line x1="${x(f.e.limite)}" x2="${x(f.e.limite)}" y1="${y0 - 6}" y2="${y0 + bh * series.length + 2}" stroke="var(--tinta-2)" stroke-width="1.5" stroke-dasharray="3 3" style="pointer-events:none"/><path d="M${x(f.e.limite)},${y0 - 12} l5,5 l-5,5 l-5,-5z" fill="var(--tinta)" style="pointer-events:none"/><text x="${x(f.e.limite) + 8}" y="${y0 - 4}" style="font-size:11px;fill:var(--tinta-2);pointer-events:none">esperado ${f.e.limite} d</text>` : ''}
             ${f.s.map((s, j) => {
               const yy = y0 + j * bh;
               const tip = `<b>${esc(etapaCorta(f.e.nombre))}${series.length > 1 ? ` · ${s.t}` : ''}</b><br>Mediana ${s.med} días · p75 ${s.p75} días<br>${s.n} estadías (${s.curso} en curso)${f.e.limite ? `<br>Esperado: ${f.e.limite} días` : ''}<small>Doble clic para ver los deals</small>`;
-              return `<rect x="${m.l}" y="${yy}" width="${Math.max(0, x(s.med) - m.l)}" height="${bh - 3}" rx="3" fill="${s.color}" ${dato(tip, `${etapaCorta(f.e.nombre)}${series.length > 1 ? ` · ${s.t}` : ''}`, 'Deals que pasaron por esta etapa', [...new Set(s.xs.map((y) => y.d))])}/>
-                <line x1="${x(s.p75)}" x2="${x(s.p75)}" y1="${yy - 1}" y2="${yy + bh - 2}" stroke="var(--tinta)" stroke-width="3"/>
-                ${j === 0 ? `<text x="${ancho - m.r + 14}" y="${m.t + i * filaH + filaH / 2 + 4}">${f.s.map((z) => `${series.length > 1 ? z.t + ' ' : ''}${z.med} / ${z.p75} d`).join(' · ')} <tspan style="fill:var(--tinta-3)">(n=${f.s.reduce((a, z) => a + z.n, 0)})</tspan></text>` : ''}`;
+              return `<rect x="${m.l}" y="${yy}" width="${Math.max(0, x(s.p75) - m.l)}" height="${bh - 3}" rx="3" fill="${s.color}" fill-opacity=".32" style="pointer-events:none"/>
+                <rect x="${m.l}" y="${yy}" width="${Math.max(0, x(s.med) - m.l)}" height="${bh - 3}" rx="3" fill="${s.color}" ${dato(tip, `${etapaCorta(f.e.nombre)}${series.length > 1 ? ` · ${s.t}` : ''}`, 'Deals que pasaron por esta etapa', [...new Set(s.xs.map((y) => y.d))])}/>
+                <line x1="${x(s.p75)}" x2="${x(s.p75)}" y1="${yy - 3}" y2="${yy + bh}" stroke="${s.color}" stroke-width="3.5" stroke-linecap="round" style="pointer-events:none"/>
+                <text x="${ancho - m.r + 14}" y="${yy + bh / 2 + 2}" style="font-size:${series.length > 1 ? 11.5 : 12}px">${series.length > 1 ? s.t + ': ' : 'mediana '}${s.med} d · p75 ${s.p75} d <tspan style="fill:var(--tinta-3)">(n=${s.n})</tspan></text>`;
             }).join('')}`;
         }).join('')}
       </svg>`;
@@ -876,13 +893,30 @@ function svgPaises(ancho, alto, todo) {
   </svg>`;
 }
 
-// ---------- 10. Mapa de Chile: un punto por deal en la dirección real de la institución (investigada el 20-nov) ----------
-let geoChile = null, geoStgo = null;
+// ---------- 10. Mapa de Chile navegable (21-nov): zoom con la rueda o botones, arrastre, minimapa y panel "en pantalla" ----------
+// Cada deal va en la dirección real de su institución (lib/ubicaciones.js, investigada el 20-nov).
+let geoChile = null, geoStgo = null, geoW = null;
+const COS = Math.cos((35 * Math.PI) / 180);
+const wx = (lon) => lon * COS, wy = (lat) => -lat; // coordenadas "mundo": norte arriba
 async function cargarGeo() {
   geoChile ??= await fetch('/chile-regiones.json').then((r) => r.json());
   geoStgo ??= await fetch('/santiago-comunas.json').then((r) => r.json());
+  if (geoW) return;
+  const caminos = (geo) => Object.fromEntries(Object.entries(geo).map(([n, rings]) => {
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const d = rings.map((r) => 'M' + r.map(([lo, la]) => { const x = wx(lo), y = wy(la); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); return `${x.toFixed(4)},${y.toFixed(4)}`; }).join('L') + 'Z').join('');
+    return [n, { d, caja: [x0, y0, x1, y1] }];
+  }));
+  geoW = { regiones: caminos(geoChile), comunas: caminos(geoStgo) };
 }
-let regionSel = null;
+const ZONAS = {
+  chile: ['Chile', -17.3, -56, -76, -66.4], norte: ['Norte', -17.3, -29.6, -71.9, -66.9], centro: ['Centro', -29.3, -38.6, -73.9, -69.8],
+  santiago: ['Santiago', -33.30, -33.66, -70.86, -70.45], sur: ['Sur', -37.5, -55.9, -76, -66.4],
+};
+const cajaZona = ([, la0, la1, lo0, lo1]) => [wx(lo0), wy(la0), wx(lo1), wy(la1)];
+let vistaMapa = null, regionSel = null, anim = null;
+const ajustar = ([x0, y0, x1, y1], W, H, pad = 0.9) => ({ x: (x0 + x1) / 2, y: (y0 + y1) / 2, k: Math.min(W / Math.max(1e-6, x1 - x0), H / Math.max(1e-6, y1 - y0)) * pad });
+
 const COLOR_OWNER = { Tomi: '#2F6FD6', Anto: '#C6403A', Beto: '#E3A21A' };
 const COLOR_ETAPA_MAPA = ['#C9D6C4', '#9FB79A', '#6F9A6A', '#3F7A4A', '#1E5A35', '#0B2E1C'];
 function colorDeal(d) {
@@ -900,102 +934,197 @@ function leyendaMapa() {
   if (modo === 'etapa') return leyenda(COLUMNAS.map((c, i) => [COLOR_ETAPA_MAPA[i], c.t]));
   return leyenda([['#1E9E5A', 'Avanzó en 7 días'], ['#D9473F', 'Estancado'], ['#E3A21A', 'En espera'], ['#8AA285', 'Al día'], ['#055A35', 'Firmado'], ['#8A8A8A', 'Perdido']]);
 }
+// Métricas con que se pintan las regiones.
+const METRICAS_MAPA = {
+  arr: { t: 'ARR', v: (ys) => suma(ys), f: (v) => usd(v) },
+  n: { t: 'Deals', v: (ys) => ys.length, f: (v) => `${v} deals` },
+  tgp: { t: '% TGP', v: (ys) => (ys.length ? ys.filter((d) => d.tgp).length / ys.length : null), f: (v) => `${Math.round(v * 100)}% TGP` },
+  pub: { t: '% público', v: (ys) => (ys.length ? ys.filter((d) => d.sector === 'Público').length / ys.length : null), f: (v) => `${Math.round(v * 100)}% público` },
+  avanz: { t: 'Avanzados', v: (ys) => suma(ys.filter((d) => ord(d.etapa) >= ord('Negotiation'))), f: (v) => `${usd(v)} de Negotiation en adelante` },
+};
+
 function diapoMapa() {
   const cuales = op['mapa.deals'];
   const xs = D().filter((d) => (cuales === 'abiertos' ? d.abierto : cuales === 'firmados' ? d.firmado : cuales === 'perdidos' ? d.perdido : true));
-  const conUbic = xs.filter((d) => d.ubic?.lat != null);
+  const conUbic = xs.filter((d) => d.ubic?.lat != null).sort((a, b) => b.arrUsd - a.arrUsd);
   const sinUbic = xs.filter((d) => d.ubic?.lat == null);
-  const regiones = [...datos.regiones.map((r) => r.nombre)];
-  const filas = regiones.map((n) => {
-    const ys = conUbic.filter((d) => d.ubic.region === n);
-    return { n, ys, arr: suma(ys), pub: ys.filter((d) => d.sector === 'Público').length, tgp: ys.filter((d) => d.tgp).length, nac: ys.filter((d) => d.ubic.alcance === 'nacional').length,
-      avanz: ys.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation')).sort((a, b) => b.arrUsd - a.arrUsd), firm: ys.filter((d) => d.firmado) };
+  const met = METRICAS_MAPA[op['mapa.pintar']] ?? null;
+  const filas = datos.regiones.map((r) => {
+    const ys = conUbic.filter((d) => d.ubic.region === r.nombre);
+    return { ...r, n: r.nombre, ys, arr: suma(ys), pub: ys.filter((d) => d.sector === 'Público').length, tgp: ys.filter((d) => d.tgp).length,
+      avanz: ys.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation')), firm: ys.filter((d) => d.firmado), m: met && ys.length ? met.v(ys) : null };
   });
+  const porRegion = Object.fromEntries(filas.map((x) => [x.n, x]));
+  const maxM = Math.max(1e-9, ...filas.map((x) => x.m ?? 0));
+  const relleno = (n) => { const x = porRegion[n]; if (!met || x?.m == null) return 'var(--tarjeta-2)'; const p = Math.round(12 + 80 * (op['mapa.pintar'] === 'tgp' || op['mapa.pintar'] === 'pub' ? x.m : Math.sqrt(x.m / maxM))); return `color-mix(in srgb, var(--verde) ${p}%, var(--tarjeta-2))`; };
   const conDatos = filas.filter((x) => x.ys.length).sort((a, b) => b.arr - a.arr || b.ys.length - a.ys.length);
   const maxArr = Math.max(1, ...conDatos.map((x) => x.arr));
-  const totalArr = suma(xs);
-  const fueraRM = filas.filter((x) => x.n !== 'Metropolitana');
-  const arrFuera = fueraRM.reduce((s, x) => s + x.arr, 0);
-  const sinNada = filas.filter((x) => !x.ys.length).map((x) => x.n);
-  const tipReg = (x) => `<b>${esc(x.n)}</b><br>${x.ys.length} deals · ${usd(x.arr)}<br>Público ${x.pub} · Privado ${x.ys.length - x.pub} · TGP ${x.tgp}${x.nac ? `<br>${x.nac} son redes nacionales (punto en su casa matriz)` : ''}${x.avanz.length ? `<br>De Negotiation en adelante: ${x.avanz.map((d) => esc(d.cuenta)).join(', ')}` : ''}<small>Doble clic para ver los deals</small>`;
-  const tabla = `<div class="tabla-scroll"><table class="t mapa-t"><thead><tr><th>Región</th><th class="num">Deals</th><th class="num">ARR</th><th style="width:20%"></th><th class="num">Púb / Priv</th><th class="num">TGP</th><th>Más avanzados</th></tr></thead><tbody>
-    ${conDatos.map((x) => `<tr data-region="${esc(x.n)}" class="${regionSel === x.n ? 'sel' : ''}" ${dato(tipReg(x), x.n, 'Deals con sede en la región', x.ys)}><td><b>${esc(x.n)}</b></td><td class="num">${x.ys.length}</td><td class="num">${usd(x.arr)}</td>
-      <td><span class="barra-r"><i style="width:${(x.arr / maxArr) * 100}%"></i></span></td><td class="num">${x.pub} / ${x.ys.length - x.pub}</td><td class="num">${x.tgp}</td><td><small>${x.avanz.slice(0, 3).map((d) => esc(d.cuenta)).join(', ') || (x.firm.length ? 'Firmado: ' + x.firm.map((d) => esc(d.cuenta)).join(', ') : '—')}</small></td></tr>`).join('')}
-    ${sinUbic.length ? `<tr ${dato(`<b>Sin ubicación</b><br>${sinUbic.length} deals<small>Doble clic para ver los deals</small>`, 'Sin ubicación', 'Deals sin dirección encontrada', sinUbic)}><td><b>Sin ubicación</b></td><td class="num">${sinUbic.length}</td><td class="num">${usd(suma(sinUbic))}</td><td></td><td></td><td></td><td><small>${sinUbic.slice(0, 3).map((d) => esc(d.cuenta)).join(', ')}</small></td></tr>` : ''}</tbody></table></div>`;
+  const tipReg = (x) => `<b>${esc(x.n)}</b><br>${x.ys.length} deals · ${usd(x.arr)}<br>Público ${x.pub} · Privado ${x.ys.length - x.pub} · TGP ${x.tgp}${x.avanz.length ? `<br>De Negotiation en adelante: ${x.avanz.map((d) => esc(d.cuenta)).join(', ')}` : ''}${met && x.m != null ? `<br><b>${met.f(x.m)}</b>` : ''}<small>Clic para ir a la región · doble clic en la tabla para la lista</small>`;
+  const tabla = `<table class="t mapa-t"><thead><tr><th>Región</th><th class="num">Deals</th><th class="num">ARR</th><th style="width:22%"></th><th class="num">TGP</th></tr></thead><tbody>
+    ${conDatos.map((x) => `<tr data-region="${esc(x.n)}" class="${regionSel === x.n ? 'sel' : ''}" ${dato(tipReg(x), x.n, 'Deals con sede en la región', x.ys)}><td><b>${esc(x.n)}</b></td><td class="num">${x.ys.length}</td><td class="num">${usd(x.arr)}</td><td><span class="barra-r"><i style="width:${(x.arr / maxArr) * 100}%"></i></span></td><td class="num">${x.tgp}</td></tr>`).join('')}
+    ${sinUbic.length ? `<tr ${dato(`<b>Sin ubicación</b><br>${sinUbic.map((d) => esc(d.cuenta)).join(', ')}<small>Doble clic para la lista</small>`, 'Sin ubicación', 'Sin sede física encontrada', sinUbic)}><td><b>Sin ubicación</b></td><td class="num">${sinUbic.length}</td><td class="num">${usd(suma(sinUbic))}</td><td></td><td></td></tr>` : ''}</tbody></table>`;
+  const sinDeals = filas.filter((x) => !x.ys.length).map((x) => x.n);
   return {
-    html: `<div class="diapo una">${card('Mapa de Chile', 'un punto por deal en la dirección de la institución; el tamaño es su ARR',
-      ops('mapa.deals', [['abiertos', 'Abiertos'], ['firmados', 'Firmados'], ['perdidos', 'Perdidos'], ['todos', 'Todos']]) + ops('mapa.color', [['estado', 'Color: estado'], ['etapa', 'Etapa'], ['owner', 'Owner'], ['origen', 'Origen']]),
-      `<div class="mapa"><div class="mapa-izq"><div class="grafico" id="g-mapa"></div>${leyendaMapa()}</div><div class="mapa-der">${tabla}
-        <p class="resumen">${conDatos.length} de 16 regiones con deals. Fuera de la Metropolitana: <b>${usd(arrFuera)}</b> (${totalArr ? Math.round((arrFuera / totalArr) * 100) : 0}% del ARR de lo que ves).${sinNada.length ? ` Sin deals: ${sinNada.join(', ')}.` : ''}</p>
-        <p class="nota">Las redes nacionales (isapres, mutuales, RedSalud, Bupa…) van en su casa matriz con borde punteado. Ubicaciones investigadas el 20-nov en lib/ubicaciones.js. Clic en un punto para ver el deal; doble clic en una fila para la lista; clic en una fila para marcar la región.</p></div></div>`)}</div>`,
+    html: `<div class="diapo una">${card('Mapa de Chile', 'arrastra para moverte, rueda o + − para acercar; clic en una región para ir a ella',
+      ops('mapa.deals', [['abiertos', 'Abiertos'], ['firmados', 'Firmados'], ['perdidos', 'Perdidos'], ['todos', 'Todos']])
+      + `<span class="ops-etq">Puntos</span>` + ops('mapa.color', [['estado', 'Estado'], ['etapa', 'Etapa'], ['owner', 'Owner'], ['origen', 'Origen']])
+      + `<span class="ops-etq">Regiones</span>` + ops('mapa.pintar', [['nada', 'Sin color'], ...Object.entries(METRICAS_MAPA).map(([k, m]) => [k, m.t])]),
+      `<div class="mapa2">
+        <div class="mini" id="m-mini"></div>
+        <div class="principal"><div class="lienzo" id="m-main"></div>
+          <div class="zonas">${Object.entries(ZONAS).map(([k, z]) => `<button class="btn" data-zona="${k}">${z[0]}</button>`).join('')}<button class="btn ic" data-zoom="1.6" title="Acercar">+</button><button class="btn ic" data-zoom="0.625" title="Alejar">−</button></div>
+          <div class="ley-mapa">${leyendaMapa()}${met ? `<div class="grad"><span>Regiones por ${met.t}:</span><i></i><span>menos → más</span></div>` : ''}</div></div>
+        <div class="lado"><div class="en-pantalla" id="m-panel"></div><div class="tabla-scroll">${tabla}</div>
+          <p class="nota">${sinDeals.length ? `Sin deals: ${sinDeals.join(', ')}. ` : ''}Las redes nacionales van en su casa matriz con borde punteado.</p></div>
+      </div>`)}</div>`,
     pintar(el) {
-      const g = el.querySelector('#g-mapa');
-      cargarGeo().then(() => {
-        const ancho = g.clientWidth, alto = g.clientHeight;
-        const rad = (v) => (v * Math.PI) / 180;
-        // Tres vistas: Chile completo, zona central (Coquimbo a Los Lagos) y Gran Santiago.
-        const kChile = (alto - 10) / 38.7;
-        const vChile = { lat0: -17.3, lat1: -56, lon0: -75.8, lon1: -66.8, k: kChile, ox: 4, oy: 5 };
-        const anchoChile = (vChile.lon1 - vChile.lon0) * Math.cos(rad(36)) * kChile;
-        const kCentro = (alto - 10) / 12.9;
-        const vCentro = { lat0: -29.3, lat1: -42.2, lon0: -74.6, lon1: -69.6, k: kCentro, ox: 4 + anchoChile + 22, oy: 5 };
-        const anchoCentro = (vCentro.lon1 - vCentro.lon0) * Math.cos(rad(36)) * kCentro;
-        const x3 = vCentro.ox + anchoCentro + 22, disp = ancho - x3 - 4;
-        const kStgo = Math.min(disp / (0.42 * Math.cos(rad(33.45))), (alto - 10) / 0.36);
-        const vStgo = { lat0: -33.29, lat1: -33.65, lon0: -70.86, lon1: -70.44, k: kStgo, ox: x3, oy: 5, cos: Math.cos(rad(33.45)) };
-        const proj = (v) => { const c = v.cos ?? Math.cos(rad(36)); return [(lon) => v.ox + (lon - v.lon0) * c * v.k, (lat) => v.oy + (v.lat0 - lat) * v.k]; };
-        const caja = (v) => { const [X, Y] = proj(v); return { x: X(v.lon0), y: Y(v.lat0), w: X(v.lon1) - X(v.lon0), h: Y(v.lat1) - Y(v.lat0) }; };
-        const geoPaths = (v, geo, clip, colorear) => {
-          const [X, Y] = proj(v);
-          return Object.entries(geo).map(([n, rings]) => {
-            const d = rings.map((r) => 'M' + r.map(([lo, la]) => `${X(lo).toFixed(1)},${Y(la).toFixed(1)}`).join('L') + 'Z').join('');
-            const sel = colorear && regionSel === n;
-            return `<path d="${d}" ${clip ? `clip-path="url(#${clip})"` : ''} fill="var(--tarjeta-2)" stroke="${sel ? 'var(--estancado)' : 'var(--borde)'}" stroke-width="${sel ? 2.5 : 0.7}"/>`;
-          }).join('');
-        };
-        const maxD = Math.max(1, ...conUbic.map((d) => d.arrUsd));
-        // Puntos: los que comparten dirección se abren en espiral para que se vean todos.
-        const puntos = (v, base, extra, filtroV) => {
-          const [X, Y] = proj(v);
-          const grupos = {};
-          const ys = conUbic.filter(filtroV).sort((a, b) => b.arrUsd - a.arrUsd);
-          return ys.map((d) => {
-            const key = d.ubic.lat.toFixed(3) + ',' + d.ubic.lon.toFixed(3);
-            const i = (grupos[key] = (grupos[key] ?? -1) + 1);
-            const r = d.arrUsd ? base + extra * Math.sqrt(d.arrUsd / maxD) : base * 0.8;
-            const ang = i * 2.4, dist = i ? (base + extra * 0.25) * 1.1 * Math.sqrt(i) : 0;
-            const cx = X(d.ubic.lon) + Math.cos(ang) * dist, cy = Y(d.ubic.lat) + Math.sin(ang) * dist;
-            const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'} · ${esc(etapaCorta(d.etapa))}${d.perdido ? ' (perdido)' : ''}<br>${d.owner ? esc(d.owner) + ' · ' : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(d.ubic.direccion ?? '')}${d.ubic.comuna ? ', ' + esc(d.ubic.comuna) : ''}${d.ubic.alcance === 'nacional' ? '<br>Red nacional: punto en la casa matriz' : ''}<small>Clic para ver el detalle</small>`;
-            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${colorDeal(d)}" fill-opacity="${d.arrUsd ? 0.85 : 0.5}" stroke="${d.ubic.alcance === 'nacional' ? 'var(--tinta)' : '#FCFCFC'}" stroke-width="${d.ubic.alcance === 'nacional' ? 1.4 : 1}" ${d.ubic.alcance === 'nacional' ? 'stroke-dasharray="2 1.5"' : ''} data-deal="${d.id}" data-tip="${esc(tip)}" style="cursor:pointer"/>`;
-          }).join('');
-        };
-        const dentro = (v) => (d) => d.ubic.lat <= v.lat0 && d.ubic.lat >= v.lat1 && d.ubic.lon >= v.lon0 && d.ubic.lon <= v.lon1;
-        const cC = caja(vCentro), cS = caja(vStgo);
-        const [XC, YC] = proj(vChile), [XCe, YCe] = proj(vCentro);
-        // Etiquetas de comunas con deals en el zoom de Santiago.
-        const [XS, YS] = proj(vStgo);
-        const comunas = {};
-        for (const d of conUbic.filter(dentro(vStgo))) if (d.ubic.comuna) (comunas[d.ubic.comuna] ??= []).push(d);
-        const etiquetasComunas = Object.entries(comunas).map(([c, ds]) => {
-          const lat = ds.reduce((s, d) => s + d.ubic.lat, 0) / ds.length, lon = ds.reduce((s, d) => s + d.ubic.lon, 0) / ds.length;
-          return `<text x="${XS(lon)}" y="${YS(lat) - 12 - Math.min(16, ds.length * 2)}" text-anchor="middle" style="font-size:11px;fill:var(--tinta-3);pointer-events:none">${esc(c)}</text>`;
-        }).join('');
-        g.innerHTML = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Mapa de Chile con un punto por deal">
-          <defs><clipPath id="clipC"><rect x="${cC.x}" y="${cC.y}" width="${cC.w}" height="${cC.h}" rx="10"/></clipPath><clipPath id="clipS"><rect x="${cS.x}" y="${cS.y}" width="${cS.w}" height="${cS.h}" rx="10"/></clipPath></defs>
-          ${geoPaths(vChile, geoChile, '', true)}${puntos(vChile, 2.2, 3, () => true)}
-          <rect x="${XC(vCentro.lon0)}" y="${YC(vCentro.lat0)}" width="${XC(vCentro.lon1) - XC(vCentro.lon0)}" height="${YC(vCentro.lat1) - YC(vCentro.lat0)}" fill="none" stroke="var(--tinta-3)" stroke-dasharray="3 2"/>
-          <rect x="${cC.x}" y="${cC.y}" width="${cC.w}" height="${cC.h}" rx="10" fill="var(--fondo)" stroke="var(--borde)"/>
-          ${geoPaths(vCentro, geoChile, 'clipC', true)}<g clip-path="url(#clipC)">${puntos(vCentro, 3, 7, dentro(vCentro))}</g>
-          <rect x="${XCe(vStgo.lon0)}" y="${YCe(vStgo.lat0)}" width="${XCe(vStgo.lon1) - XCe(vStgo.lon0)}" height="${YCe(vStgo.lat1) - YCe(vStgo.lat0)}" fill="none" stroke="var(--tinta-3)" stroke-dasharray="3 2"/>
-          <text x="${cC.x + 10}" y="${cC.y + cC.h - 10}" style="font-size:11px;fill:var(--tinta-3)">Zona central</text>
-          <rect x="${cS.x}" y="${cS.y}" width="${cS.w}" height="${cS.h}" rx="10" fill="var(--fondo)" stroke="var(--borde)"/>
-          ${geoPaths(vStgo, geoStgo, 'clipS', false)}<g clip-path="url(#clipS)">${etiquetasComunas}${puntos(vStgo, 4, 16, dentro(vStgo))}</g>
-          <text x="${cS.x + 10}" y="${cS.y + cS.h - 10}" style="font-size:11px;fill:var(--tinta-3)">Gran Santiago</text>
-        </svg>`;
-      });
+      cargarGeo().then(() => montarMapa(el, { conUbic, porRegion, relleno, tipReg, met }));
     },
   };
 }
+
+function montarMapa(el, ctx) {
+  const cont = el.querySelector('#m-main'), mini = el.querySelector('#m-mini'), panel = el.querySelector('#m-panel');
+  if (!cont) return;
+  const W = cont.clientWidth, H = cont.clientHeight, MW = mini.clientWidth, MH = mini.clientHeight;
+  const kMin = ajustar(cajaZona(ZONAS.chile), W, H).k * 0.8, kMax = 9000;
+  vistaMapa ??= ajustar(cajaZona(ZONAS.centro), W, H);
+  const regiones = Object.entries(geoW.regiones).map(([n, g]) => `<path d="${g.d}" data-rg="${esc(n)}" fill="${ctx.relleno(n)}" stroke="var(--tarjeta)" stroke-width="${regionSel === n ? 2.5 : 1}" vector-effect="non-scaling-stroke" ${ctx.porRegion[n] ? `data-tip="${esc(ctx.tipReg(ctx.porRegion[n]))}"` : ''} style="${regionSel === n ? 'stroke:var(--estancado)' : ''}"/>`).join('');
+  const comunas = Object.entries(geoW.comunas).map(([n, g]) => `<path d="${g.d}" fill="none" stroke="var(--tinta-3)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`).join('');
+  cont.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa navegable de Chile con los deals"><rect width="${W}" height="${H}" fill="transparent"/>
+    <g id="m-geo">${regiones}<g id="m-com">${comunas}</g></g><g id="m-etq-r"></g><g id="m-puntos"></g><g id="m-etq"></g></svg>`;
+  const mk = ajustar(cajaZona(ZONAS.chile), MW, MH, 0.96);
+  mini.innerHTML = `<svg width="${MW}" height="${MH}" viewBox="0 0 ${MW} ${MH}" role="img" aria-label="Minimapa"><g transform="translate(${MW / 2 - mk.x * mk.k},${MH / 2 - mk.y * mk.k}) scale(${mk.k})">${Object.entries(geoW.regiones).map(([n, g]) => `<path d="${g.d}" fill="${ctx.relleno(n)}" stroke="var(--tarjeta)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`).join('')}</g>
+    <g id="mini-pts">${ctx.conUbic.map((d) => `<circle cx="${(MW / 2 + (wx(d.ubic.lon) - mk.x) * mk.k).toFixed(1)}" cy="${(MH / 2 + (wy(d.ubic.lat) - mk.y) * mk.k).toFixed(1)}" r="1.6" fill="${colorDeal(d)}"/>`).join('')}</g>
+    <rect id="mini-vista" fill="var(--acento)" fill-opacity=".12" stroke="var(--acento)" stroke-width="1.5" rx="2"/></svg>`;
+  const svg = cont.querySelector('svg');
+  abortMapa?.abort(); abortMapa = new AbortController();
+  const sig = { signal: abortMapa.signal };
+  const S = (lon, lat, v) => [W / 2 + (wx(lon) - v.x) * v.k, H / 2 + (wy(lat) - v.y) * v.k];
+  const maxD = Math.max(1, ...ctx.conUbic.map((d) => d.arrUsd));
+
+  function dibujar() {
+    const v = vistaMapa;
+    svg.querySelector('#m-geo').setAttribute('transform', `translate(${W / 2 - v.x * v.k},${H / 2 - v.y * v.k}) scale(${v.k})`);
+    svg.querySelector('#m-com').style.opacity = v.k > 400 ? Math.min(1, (v.k - 400) / 600) : 0;
+    // De cerca el color de las regiones se aclara para que manden los puntos y las comunas.
+    svg.querySelector('#m-geo').style.fillOpacity = v.k > 250 ? Math.max(0.2, 1 - (v.k - 250) / 600) : 1;
+    // Puntos: tamaño según ARR y crecen un poco al acercarse; los que comparten dirección se abren en espiral.
+    const r0 = Math.max(2.6, Math.min(8, 1.6 * Math.log2(v.k / 6)));
+    const grupos = {}, vis = [], occ = [];
+    let pts = '';
+    for (const d of ctx.conUbic) {
+      const key = d.ubic.lat.toFixed(3) + ',' + d.ubic.lon.toFixed(3);
+      const i = (grupos[key] = (grupos[key] ?? -1) + 1);
+      let [x, y] = S(d.ubic.lon, d.ubic.lat, v);
+      const r = d.arrUsd ? r0 + r0 * 2.4 * Math.sqrt(d.arrUsd / maxD) : r0 * 0.75;
+      if (i) { const a = i * 2.4, dist = r0 * 1.7 * Math.sqrt(i); x += Math.cos(a) * dist; y += Math.sin(a) * dist; }
+      if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
+      if (x >= 0 && y >= 0 && x <= W && y <= H) vis.push({ d, x, y, r });
+      const nac = d.ubic.alcance === 'nacional';
+      const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'} · ${esc(etapaCorta(d.etapa))}${d.perdido ? ' (perdido)' : ''}<br>${d.owner ? esc(d.owner) + ' · ' : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(d.ubic.direccion ?? '')}${d.ubic.comuna ? ', ' + esc(d.ubic.comuna) : ''}${nac ? '<br>Red nacional: punto en la casa matriz' : ''}<small>Clic para ver el detalle</small>`;
+      pts += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${colorDeal(d)}" fill-opacity="${d.arrUsd ? 0.88 : 0.5}" stroke="${nac ? 'var(--tinta)' : '#FCFCFC'}" stroke-width="${nac ? 1.4 : 1}" ${nac ? 'stroke-dasharray="2 1.5"' : ''} data-deal="${d.id}" data-tip="${esc(tip)}" style="cursor:pointer"/>`;
+    }
+    svg.querySelector('#m-puntos').innerHTML = pts;
+    // Etiquetas que no se pisan: regiones de lejos, nombres de deals y comunas de cerca.
+    const cabe = (x, y, w, h) => { if (x < 2 || y < 2 || x + w > W - 2 || y + h > H - 2) return false; if (occ.some((o) => x < o[0] + o[2] && x + w > o[0] && y < o[1] + o[3] && y + h > o[1])) return false; occ.push([x, y, w, h]); return true; };
+    let etqR = '', etq = '';
+    if (v.k < 260) {
+      for (const r of datos.regiones) {
+        const x = ctx.porRegion[r.nombre]; if (!x?.ys.length) continue;
+        const [sx, sy] = S(r.lon, r.lat, v);
+        const txt = `${r.nombre} · ${ctx.met && x.m != null ? ctx.met.f(x.m) : usd(x.arr)}`;
+        const w = txt.length * 6.6 + 10;
+        if (cabe(sx + 12, sy - 9, w, 18)) etqR += `<g style="pointer-events:none"><rect x="${sx + 12}" y="${sy - 9}" width="${w}" height="18" rx="5" fill="var(--tarjeta)" fill-opacity=".9" stroke="var(--borde)"/><text x="${sx + 17}" y="${sy + 4}" style="font-size:11.5px;font-weight:600;fill:var(--tinta)">${esc(txt)}</text></g>`;
+      }
+    }
+    if (v.k > 700) {
+      const com = {};
+      for (const p of vis) if (p.d.ubic.comuna) (com[p.d.ubic.comuna] ??= []).push(p);
+      for (const [c, ps] of Object.entries(com)) {
+        const x = ps.reduce((s, p) => s + p.x, 0) / ps.length, y = Math.min(...ps.map((p) => p.y - p.r)) - 8;
+        if (cabe(x - c.length * 3.2, y - 10, c.length * 6.4, 12)) etq += `<text x="${x}" y="${y}" text-anchor="middle" style="font-size:11px;fill:var(--tinta-3);font-style:italic;pointer-events:none">${esc(c)}</text>`;
+      }
+    }
+    if (v.k > 160) {
+      for (const p of vis.slice(0, 80)) {
+        const t = p.d.cuenta.length > 26 ? p.d.cuenta.slice(0, 25) + '…' : p.d.cuenta;
+        const w = t.length * 6.2;
+        if (cabe(p.x + p.r + 3, p.y - 7, w, 13)) etq += `<text x="${p.x + p.r + 3}" y="${p.y + 4}" style="font-size:11px;font-weight:600;fill:var(--tinta);paint-order:stroke;stroke:var(--fondo);stroke-width:3px;pointer-events:none">${esc(t)}</text>`;
+      }
+    }
+    svg.querySelector('#m-etq-r').innerHTML = etqR;
+    svg.querySelector('#m-etq').innerHTML = etq;
+    // Minimapa: el rectángulo es lo que estás viendo.
+    const rv = mini.querySelector('#mini-vista');
+    const x0 = MW / 2 + (v.x - W / 2 / v.k - mk.x) * mk.k, y0 = MH / 2 + (v.y - H / 2 / v.k - mk.y) * mk.k;
+    const ww = (W / v.k) * mk.k, hh = (H / v.k) * mk.k;
+    rv.setAttribute('x', x0); rv.setAttribute('y', y0); rv.setAttribute('width', Math.max(3, ww)); rv.setAttribute('height', Math.max(3, hh));
+    // Panel con lo que se ve en pantalla.
+    const ds = vis.map((p) => p.d);
+    const top = [...ds].sort((a, b) => b.arrUsd - a.arrUsd).slice(0, 6);
+    const zona = Object.entries(ZONAS).find(([, z]) => { const a = ajustar(cajaZona(z), W, H); return Math.abs(Math.log(a.k / v.k)) < 0.25 && Math.hypot(a.x - v.x, a.y - v.y) * v.k < 60; })?.[1][0];
+    panel.innerHTML = `<div class="ep-cab"><b>En pantalla${zona ? ` · ${zona}` : ''}</b><span>${ds.length} de ${ctx.conUbic.length} deals</span></div>
+      <div class="ep-nums"><div><b>${usd(suma(ds))}</b>ARR</div><div><b>${ds.filter((d) => d.sector === 'Público').length}/${ds.filter((d) => d.sector !== 'Público').length}</b>público/privado</div><div><b>${ds.filter((d) => d.tgp).length}</b>de TGP</div><div><b>${ds.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation')).length}</b>avanzados</div></div>
+      <div class="ep-top">${top.map((d) => `<button class="pill" data-deal="${d.id}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colorDeal(d)};margin-right:5px"></span>${esc(d.cuenta)} <small>${usd(d.arrUsd)}</small></button>`).join('') || '<span class="nota">Muévete o aléjate para ver deals</span>'}</div>`;
+  }
+  let pendiente = false;
+  const redibujar = () => { if (pendiente) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; dibujar(); }); };
+  const limitar = (v) => ({ ...v, k: Math.min(kMax, Math.max(kMin, v.k)) });
+  function irA(dest, ms = 550) {
+    cancelAnimationFrame(anim);
+    const a = { ...vistaMapa }, b = limitar(dest), t0 = performance.now();
+    const paso = (t) => {
+      const u = Math.min(1, (t - t0) / ms), e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
+      const k = Math.exp(Math.log(a.k) + (Math.log(b.k) - Math.log(a.k)) * e);
+      vistaMapa = { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e, k };
+      dibujar();
+      if (u < 1) anim = requestAnimationFrame(paso);
+    };
+    anim = requestAnimationFrame(paso);
+  }
+  irARegionMapa = (n) => { const g = geoW.regiones[n]; if (g) irA(ajustar(g.caja, W, H, 0.85)); };
+  // Rueda: acerca o aleja en torno al mouse.
+  svg.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, v = vistaMapa;
+    const k = Math.min(kMax, Math.max(kMin, v.k * Math.exp(-e.deltaY * 0.0018)));
+    const gx = v.x + (mx - W / 2) / v.k, gy = v.y + (my - H / 2) / v.k;
+    vistaMapa = { x: gx - (mx - W / 2) / k, y: gy - (my - H / 2) / k, k };
+    redibujar();
+  }, { passive: false });
+  // Arrastre para moverse; un clic sin arrastre en una región la acerca.
+  let arr = null, movio = false;
+  svg.addEventListener('pointerdown', (e) => { arr = { x: e.clientX, y: e.clientY, v: { ...vistaMapa } }; movio = false; cancelAnimationFrame(anim); });
+  addEventListener('pointermove', (e) => {
+    if (!arr || !svg.isConnected) return;
+    const dx = e.clientX - arr.x, dy = e.clientY - arr.y;
+    if (!movio && Math.hypot(dx, dy) < 4) return;
+    if (!movio) svg.setPointerCapture?.(e.pointerId);
+    movio = true; cont.classList.add('arrastrando');
+    vistaMapa = { ...arr.v, x: arr.v.x - dx / arr.v.k, y: arr.v.y - dy / arr.v.k };
+    redibujar();
+  }, sig);
+  addEventListener('pointerup', () => { arr = null; cont.classList.remove('arrastrando'); }, sig);
+  svg.addEventListener('click', (e) => {
+    if (movio) { e.stopPropagation(); movio = false; return; }
+    if (e.target.closest('[data-deal]')) return;
+    const rg = e.target.closest('[data-rg]');
+    if (rg) { e.stopPropagation(); regionSel = rg.dataset.rg; irARegionMapa(regionSel); el.querySelectorAll('tr[data-region]').forEach((t) => t.classList.toggle('sel', t.dataset.region === regionSel)); }
+  }, true);
+  // Minimapa: clic o arrastre para moverse a ese lugar.
+  const msvg = mini.querySelector('svg');
+  const centrarEn = (e) => { const r = msvg.getBoundingClientRect(); vistaMapa = { ...vistaMapa, x: mk.x + (e.clientX - r.left - MW / 2) / mk.k, y: mk.y + (e.clientY - r.top - MH / 2) / mk.k }; redibujar(); };
+  let mArr = false;
+  msvg.addEventListener('pointerdown', (e) => { mArr = true; msvg.setPointerCapture?.(e.pointerId); centrarEn(e); });
+  msvg.addEventListener('pointermove', (e) => mArr && centrarEn(e));
+  msvg.addEventListener('pointerup', () => (mArr = false));
+  el.querySelectorAll('[data-zona]').forEach((b) => (b.onclick = () => { regionSel = null; irA(ajustar(cajaZona(ZONAS[b.dataset.zona]), W, H)); }));
+  el.querySelectorAll('[data-zoom]').forEach((b) => (b.onclick = () => irA({ ...vistaMapa, k: vistaMapa.k * Number(b.dataset.zoom) }, 300)));
+  dibujar();
+}
+let irARegionMapa = () => {};
+let abortMapa = null;
 
 const DIAPOS = [
   { t: 'Camino al millón', f: diapoCamino },
@@ -1163,7 +1292,7 @@ document.addEventListener('click', (e) => {
   const o = e.target.closest('[data-op]');
   if (o) { op[o.dataset.op] = o.dataset.v; guardar('vu-op', op); return o.dataset.op.startsWith('pend.') ? pintarPendientes() : pintar(); }
   const rg = e.target.closest('[data-region]');
-  if (rg) { regionSel = regionSel === rg.dataset.region ? null : rg.dataset.region; return pintar(); }
+  if (rg) { regionSel = rg.dataset.region; document.querySelectorAll('tr[data-region]').forEach((t) => t.classList.toggle('sel', t.dataset.region === regionSel)); return irARegionMapa(regionSel); }
   const irA = e.target.closest('[data-ir]');
   if (irA) return ir(Number(irA.dataset.ir));
   const deal = e.target.closest('[data-deal]');

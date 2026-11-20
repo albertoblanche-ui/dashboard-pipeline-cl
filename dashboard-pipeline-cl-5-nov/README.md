@@ -16,7 +16,7 @@ Todo vive en `/` (public/index.html). Panel, Torre de control, modo TV e Iniciat
 - 10 diapositivas, se pasan con ◀ ▶ o el teclado: Camino al millón (con "¿Alcanza lo avanzado?"), Actividad semanal, Carrera de deals (alto por tramos de ARR), Pipeline por etapa + Demand generation, Evolución del pipeline, Días por etapa, Pipeline por owner (sin Esteban), Calidad de TGP, Carrera de países y Mapa de Chile.
 - En todos los gráficos: el dato al pasar el mouse y la lista de deals con doble clic.
 - Pendientes del equipo: desplegable abajo (resumen, le toca, tareas, esperando al cliente, dónde presionar, higiene).
-- Mapa: un punto por deal en la dirección real de la institución (`lib/ubicaciones.js`, investigada el 20-nov; la llave es el SHA-256 del nombre porque el repo es público). Una cuenta nueva sale "Sin ubicación" hasta agregarla.
+- Mapa navegable (21-nov): zoom con rueda o + −, arrastre, minimapa con el rectángulo de lo que se ve, saltos Chile/Norte/Centro/Santiago/Sur, regiones pintadas por ARR, deals, % TGP, % público o avanzados, y panel "En pantalla". Un punto por deal en la dirección real de la institución (`lib/ubicaciones.js`, investigada el 20-nov; la llave es el SHA-256 del nombre porque el repo es público). Una cuenta nueva sale "Sin ubicación" hasta agregarla.
 - Celebración de contrato firmado: `/?celebrar=1` para probarla.
 - Vista de Jaime Mañalich (`/jaime`, clave propia en `JAIME_PASSWORD`): sin cambios.
 - Carrera de países: Chile parte el 17-ago-2026; Colombia y Brasil siguen provisorios (`PAISES` en `lib/config.js`).
