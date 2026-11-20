@@ -14,6 +14,8 @@ const MESES = { ene: 0, feb: 1, mar: 2, abr: 3, may: 4, jun: 5, jul: 6, ago: 7, 
 const valor = (d, slug) => d.values?.[slug]?.[0];
 const texto = (d, slug) => valor(d, slug)?.value ?? null;
 const titulo = (v) => v?.status?.title ?? v?.option?.title ?? null;
+// Fecha de hoy (o de un instante) en Chile, como 'YYYY-MM-DD': el servidor corre en UTC (revisión 21-nov).
+const diaCL = (t) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date(t));
 const dias = (desde, hasta) => Math.floor((hasta - new Date(desde)) / DIA);
 
 // Busca fechas escritas en el next step ("lun 19-oct", "2-nov", "20/10") y devuelve la primera
@@ -21,10 +23,13 @@ const dias = (desde, hasta) => Math.floor((hasta - new Date(desde)) / DIA);
 export function fechaEnTexto(txt, escritoEn, ahora) {
   if (!txt) return null;
   const fechas = [];
-  const re = /(\d{1,2})\s*(?:-|\/|\s|de\s)\s*(?:(ene|feb|mar|abr|may|jun|jul|ago|sep|set|oct|nov|dic)[a-záéíóú]*|(\d{1,2}))\b/gi;
+  // Revisión 21-nov: el mes con letras tiene que ser un nombre de mes (no "marcas"), "de" exige mes con letras
+  // y entre dos números solo vale "-" o "/" (así "2 de 3 directores" o "1/2 jornada" no son fechas).
+  const MES = '(ene(?:ro)?|feb(?:rero)?|mar(?:zo)?|abr(?:il)?|may(?:o)?|jun(?:io)?|jul(?:io)?|ago(?:sto)?|sept?(?:iembre)?|set(?:iembre)?|oct(?:ubre)?|nov(?:iembre)?|dic(?:iembre)?)';
+  const re = new RegExp(`(?<![\\d/])(\\d{1,2})(?:\\s*[-/]\\s*|\\s+(?:de\\s+)?)${MES}\\b|(?<![\\d/])(\\d{1,2})[-/](\\d{1,2})(?![\\d/])`, 'gi');
   for (const m of txt.matchAll(re)) {
-    const dia = Number(m[1]);
-    const mes = m[3] ? Number(m[3]) - 1 : MESES[m[2].toLowerCase()];
+    const dia = Number(m[1] ?? m[3]);
+    const mes = m[4] ? Number(m[4]) - 1 : MESES[m[2].toLowerCase().slice(0, m[2].toLowerCase().startsWith('sept') ? 4 : 3)];
     if (dia < 1 || dia > 31 || mes == null || mes < 0 || mes > 11) continue;
     let f = new Date(Date.UTC(ahora.getUTCFullYear(), mes, dia, 15));
     if (f - ahora > 240 * DIA) f = new Date(Date.UTC(ahora.getUTCFullYear() - 1, mes, dia, 15));
@@ -98,7 +103,7 @@ export function construirDashboard(raw, ahora = new Date()) {
     const id = d.id.record_id;
     const etapa = titulo(valor(d, 'deal_stage')) ?? 'Sin etapa';
     const info = etapaInfo[etapa];
-    const hist = raw.historial[id] ?? [];
+    const hist = [...(raw.historial[id] ?? [])].sort((a, b) => new Date(a.active_from) - new Date(b.active_from));
     const entradaEtapa = valor(d, 'deal_stage')?.active_from ?? d.created_at;
     const arrUsdAttio = valor(d, 'arr_usd')?.currency_value ?? 0;
     // Origen del deal: el campo "Opportunity source" de Attio. TGP también es la lista "CL - Agendadas por TGP" (coinciden 38 de 38 el 9-nov).
@@ -126,7 +131,7 @@ export function construirDashboard(raw, ahora = new Date()) {
       .map((x) => new Date(x))
       .reduce((a, b) => (b > a ? b : a));
     const firmaEsperada = texto(d, 'expected_close_date');
-    const abierto = !ETAPAS_FIRMADAS.includes(etapa) && !ETAPAS_CERRADAS.includes(etapa);
+    const abierto = Boolean(info) && !ETAPAS_FIRMADAS.includes(etapa) && !ETAPAS_CERRADAS.includes(etapa);
     const diasEtapa = dias(entradaEtapa, ahora);
     const diasInactivo = dias(ultimaActividad, ahora);
     const vencido = fechaNS ? fechaNS < new Date(ahora - DIA / 2) : false;
@@ -135,7 +140,7 @@ export function construirDashboard(raw, ahora = new Date()) {
     const todos = hist.slice(1).map((v, i) => {
       const de = titulo(hist[i]);
       const a = titulo(v);
-      return { de, a, fecha: v.active_from, avance: orden(a) > orden(de), por: miembro[v.created_by_actor?.id]?.corto ?? null };
+      return { de, a, fecha: v.active_from, avance: orden(de) >= 0 && orden(a) > orden(de), por: miembro[v.created_by_actor?.id]?.corto ?? null };
     });
     // Lento: pasó los días esperados de la etapa (solo informativo). Estancado: perdió el ritmo (ritmoDeal).
     const lento = abierto && info?.limite != null && diasEtapa > info.limite;
@@ -155,7 +160,7 @@ export function construirDashboard(raw, ahora = new Date()) {
       if (!responsableId) problemas.push('Sin responsable');
       if (diasInactivo > DIAS_SIN_ACTIVIDAD) problemas.push(`Sin actividad hace ${diasInactivo} días`);
       if (estancado) problemas.push(`Estancado: ${ritmo.motivo}`);
-      if (firmaEsperada && new Date(firmaEsperada) < ahora) problemas.push('Fecha de firma ya pasó');
+      if (firmaEsperada && firmaEsperada.slice(0, 10) < diaCL(ahora)) problemas.push('Fecha de firma ya pasó');
       if (arrUsdAttio === 0 && arrClp > 0) problemas.push('ARR USD en 0 en Attio');
       if (!arrClp && !arrUsdAttio) problemas.push('Sin ARR');
       else if (arrUsd < TICKET_MINIMO_USD) problemas.push('Ticket bajo USD 50K');
@@ -164,7 +169,7 @@ export function construirDashboard(raw, ahora = new Date()) {
 
     movimientosPorDeal.set(id, todos);
     const movimientos = todos.filter((m) => new Date(m.fecha) >= semanaAtras);
-    const firmaContrato = texto(d, 'contract_signature_date') ?? (ETAPAS_FIRMADAS.includes(etapa) ? entradaEtapa.slice(0, 10) : null);
+    const firmaContrato = texto(d, 'contract_signature_date') ?? (ETAPAS_FIRMADAS.includes(etapa) ? (hist.find((v) => ETAPAS_FIRMADAS.includes(titulo(v)))?.active_from ?? entradaEtapa).slice(0, 10) : null);
 
     return {
       id,
@@ -172,7 +177,7 @@ export function construirDashboard(raw, ahora = new Date()) {
       cuenta: nombre.split(' - ')[0],
       url: `https://app.attio.com/telepatia-ai/custom/opportunities/record/${id}`,
       etapa,
-      ordenEtapa: info?.orden ?? (ETAPAS_CERRADAS.includes(etapa) ? 99 : 98),
+      ordenEtapa: info?.orden ?? -1,
       abierto,
       firmado: ETAPAS_FIRMADAS.includes(etapa),
       perdido: etapa === 'Closed lost',
@@ -237,8 +242,8 @@ export function construirDashboard(raw, ahora = new Date()) {
       return {
         id: t.id.task_id,
         texto: t.content_plaintext,
-        vence: t.deadline_at?.slice(0, 10) ?? null,
-        vencida: t.deadline_at ? new Date(t.deadline_at) < ahora : false,
+        vence: t.deadline_at ? diaCL(t.deadline_at) : null,
+        vencida: t.deadline_at ? diaCL(t.deadline_at) < diaCL(ahora) : false,
         asignados: t.assignees.map((a) => miembro[a.referenced_actor_id]?.corto).filter(Boolean),
         deal: deal ? { id: deal.id, cuenta: deal.cuenta, url: deal.url } : null,
       };

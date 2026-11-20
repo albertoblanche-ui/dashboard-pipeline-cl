@@ -47,7 +47,7 @@ export function etapaCorta(e) {
 export function estadoNextStep(d) {
   if (!d.nextStep) return { clase: 'critico', texto: 'Sin next step' };
   if (!d.fechaNextStep) return { clase: 'aviso', texto: 'Sin fecha' };
-  const hoy = new Date().toISOString().slice(0, 10);
+  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Santiago' }).format(new Date()); // hoy en Chile, no en UTC
   if (d.vencido) return { clase: 'critico', texto: 'Vencido ' + fecha(d.fechaNextStep) };
   if (d.fechaNextStep === hoy) return { clase: 'serio', texto: 'Hoy' };
   return { clase: 'neutro', texto: fecha(d.fechaNextStep) };

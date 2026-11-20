@@ -165,7 +165,7 @@
   .mapa2 .zonas .btn { box-shadow: 0 1px 3px rgb(0 0 0 / .08); }
   .mapa2 .ley-mapa { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center; }
   .grad { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--tinta-2); }
-  .grad i { width: 110px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--verde) 12%, var(--tarjeta-2)), var(--verde)); }
+  .grad i { width: 110px; height: 10px; border-radius: 5px; background: linear-gradient(90deg, color-mix(in srgb, var(--verde) 18%, var(--tarjeta-2)), color-mix(in srgb, var(--verde) 58%, var(--tarjeta-2))); }
   .mapa2 .lado { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
   .mapa2 .lado .tabla-scroll { flex: 1; min-height: 0; }
   .en-pantalla { background: var(--tarjeta-2); border-radius: 12px; padding: 12px 14px; display: grid; gap: 10px; }
@@ -335,7 +335,7 @@ const ord = (e) => ordenEtapa[e] ?? -1;
 // ---------- Estado: filtros, opciones de cada gráfico, diapositiva ----------
 const guardado = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } };
 const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-const filtro = guardado('vu-filtro', { owner: 'Todos', origen: 'Todos', sector: 'Todos' });
+const filtro = Object.assign({ owner: 'Todos', origen: 'Todos', sector: 'Todos' }, guardado('vu-filtro', {}));
 const op = Object.assign({
   'camino.vista': 'firmado', 'camino.2026': 'todo',
   'act.metrica': 'nuevos', 'act.medida': 'n',
@@ -552,7 +552,7 @@ function svgAlcanza(ancho, alto) {
 // ---------- 2. Actividad semanal (reemplaza "Esta semana vs la anterior") ----------
 const METRICAS = {
   nuevos: { t: 'Deals nuevos', deals: (s) => D().filter((d) => enSemana(d.creado, s)) },
-  reuniones: { t: 'Primeras reuniones', deals: (s) => D().filter((d) => enSemana(d.primeraReunion, s)) },
+  reuniones: { t: 'Primeras reuniones', deals: (s) => D().filter((d) => enSemana(d.primeraReunion, s) && fechaT(d.primeraReunion) <= Date.now()) },
   avanzaron: { t: 'Avanzaron de etapa', deals: (s) => D().filter((d) => transiciones(d).some((x) => x.t >= s.desde && x.t < s.hasta && ord(x.a) > ord(x.de) && ord(x.de) >= 0)) },
   perdidos: { t: 'Perdidos', deals: (s) => D().filter((d) => transiciones(d).some((x) => x.t >= s.desde && x.t < s.hasta && x.a === 'Closed lost')) },
   firmados: { t: 'Firmados', deals: (s) => D().filter((d) => d.firmado && enSemana(d.firmaContrato, s)) },
@@ -749,13 +749,14 @@ function diapoPermanencia() {
     : [{ t: 'Todos', color: 'var(--acento)', r: estadias(D()) }];
   const filas = etapas.map((e) => ({ e, s: series.map((x) => { const xs = x.r[e.nombre] ?? []; const ds = xs.map((y) => y.dias); return { ...x, xs, med: mediana(ds), p75: p75(ds), n: xs.length, curso: xs.filter((y) => y.enCurso).length }; }) }));
   const max = Math.max(10, ...filas.flatMap((f) => [f.e.limite ?? 0, ...f.s.map((x) => x.p75)])) * 1.08;
-  const peor = filas.filter((f) => f.e.limite && f.s[0].n >= 3).map((f) => ({ f, r: f.s[0].med / f.e.limite })).sort((a, b) => b.r - a.r)[0];
+  const todas = estadias(D());
+  const peor = filas.map((f) => { const ds = (todas[f.e.nombre] ?? []).map((y) => y.dias); return { f, med: mediana(ds), n: ds.length }; }).filter((x) => x.f.e.limite && x.n >= 3).map((x) => ({ ...x, r: x.med / x.f.e.limite })).sort((a, b) => b.r - a.r)[0];
   return {
     html: `<div class="diapo una">${card('Días de permanencia por etapa', 'cuántos días se queda un deal en cada etapa: la barra fuerte es la mediana (la mitad de los deals sale antes), la clara llega al p75 (3 de cada 4) y el rombo es lo esperado',
       ops('perm.curso', [['todas', 'Incluye las que siguen en curso'], ['cerradas', 'Solo estadías terminadas']]) + ops('perm.comparar', [['no', 'Todos juntos'], ['origen', 'TGP vs equipo']]),
       '<div class="grafico" id="g-perm"></div>',
       `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px"><div class="leyenda">${series.map((x) => `<span><i style="background:${x.color}"></i>Mediana${x.t === 'Todos' ? '' : ' ' + x.t}</span><span><i style="background:${x.color};opacity:.32"></i>hasta el p75${x.t === 'Todos' ? '' : ' ' + x.t}</span>`).join('')}<span>◆ días esperados de la etapa</span></div>
-        ${peor ? `<p class="resumen" style="margin:0">Más lenta frente a lo esperado: <b>${esc(etapaCorta(peor.f.e.nombre))}</b>, mediana ${peor.f.s[0].med} días contra ${peor.f.e.limite} esperados.</p>` : ''}</div>`)}</div>`,
+        ${peor ? `<p class="resumen" style="margin:0">Más lenta frente a lo esperado: <b>${esc(etapaCorta(peor.f.e.nombre))}</b>, mediana ${peor.med} días contra ${peor.f.e.limite} esperados (todos los deals).</p>` : ''}</div>`)}</div>`,
     pintar(el) {
       const g = el.querySelector('#g-perm');
       const ancho = g.clientWidth, alto = g.clientHeight;
@@ -819,15 +820,16 @@ function diapoTGP() {
   const base = D({ sinOrigen: true }).filter((d) => fechaT(d.creado) >= desde);
   const kReu = ord('First meeting held'), kBC = ord('Build consensus');
   const fila = (t, xs) => {
-    const reu = xs.filter((d) => llego(d, kReu) || d.primeraReunion);
+    const reunionHecha = (d) => d.primeraReunion && fechaT(d.primeraReunion) <= Date.now();
+    const reu = xs.filter((d) => llego(d, kReu) || reunionHecha(d));
     const bc = xs.filter((d) => llego(d, kBC));
     const firm = xs.filter((d) => d.firmado);
     const perd = xs.filter((d) => d.perdido);
     const ab = xs.filter((d) => d.abierto);
     const est = ab.filter((d) => d.estancado);
     const conArr = xs.filter((d) => d.arrUsd > 0);
-    const aReu = reu.map((d) => { const h = histDe(d).find(([e]) => ord(e) >= kReu); const t1 = h ? fechaT(h[1]) : d.primeraReunion ? fechaT(d.primeraReunion) : null; return t1 ? Math.max(0, Math.round((t1 - fechaT(d.creado)) / DIA)) : null; }).filter((v) => v != null);
-    return { t, xs, reu, bc, firm, perd, ab, est, conArr, sinArr: xs.length - conArr.length, diasReu: mediana(aReu) };
+    const aReu = reu.map((d) => { const h = histDe(d).find(([e]) => ord(e) >= kReu); const t1 = h ? fechaT(h[1]) : reunionHecha(d) ? fechaT(d.primeraReunion) : null; return t1 ? Math.max(0, Math.round((t1 - fechaT(d.creado)) / DIA)) : null; }).filter((v) => v != null);
+    return { t, xs, reu, bc, firm, perd, ab, est, conArr, sinArr: xs.length - conArr.length, diasReu: mediana(aReu), nReu: aReu.length };
   };
   const filas = [fila('TGP', base.filter((d) => d.tgp)), fila('Equipo', base.filter((d) => !d.tgp))];
   const tot = fila('Total', base);
@@ -836,7 +838,7 @@ function diapoTGP() {
   const cN = (f, xs, titulo, txt) => `<td class="num" ${dato(`<b>${f.t} · ${titulo}</b><br>${xs.length} deals · ${usd(suma(xs))}<small>Doble clic para ver los deals</small>`, `${f.t} · ${titulo}`, 'Deals del período', xs)}>${txt}</td>`;
   const tr = (f, clase = '') => `<tr class="${clase}"><td><b>${f.t}</b></td>${cN(f, f.xs, 'deals creados', f.xs.length)}${cPct(f, f.reu, f.xs, 'llegaron a 1ª reunión')}${cPct(f, f.bc, f.xs, 'llegaron a Build consensus o más')}
     ${cN(f, f.firm, 'firmados', `${f.firm.length} <small>· ${usd(suma(f.firm))}</small>`)}${cN(f, f.conArr, 'con ARR', `${usd(f.conArr.length ? suma(f.conArr) / f.conArr.length : 0)} <small>· ${f.sinArr} sin ARR</small>`)}
-    ${cPct(f, f.est, f.ab, 'abiertos estancados')}${cPct(f, f.perd, f.xs, 'perdidos')}<td class="num">${f.diasReu ? `${f.diasReu} d` : '—'}</td></tr>`;
+    ${cPct(f, f.est, f.ab, 'abiertos estancados')}${cPct(f, f.perd, f.xs, 'perdidos')}<td class="num">${f.nReu ? `${f.diasReu} d` : '—'}</td></tr>`;
   const [a, b] = filas;
   return {
     html: `<div class="diapo una">${card('Calidad e impacto de TGP', 'deals creados en el período, TGP contra el equipo (aquí no se aplica el filtro de origen)',
@@ -946,7 +948,7 @@ const METRICAS_MAPA = {
   n: { t: 'Deals', v: (ys) => ys.length, f: (v) => `${v} deals` },
   tgp: { t: '% TGP', v: (ys) => (ys.length ? ys.filter((d) => d.tgp).length / ys.length : null), f: (v) => `${Math.round(v * 100)}% TGP` },
   pub: { t: '% público', v: (ys) => (ys.length ? ys.filter((d) => d.sector === 'Público').length / ys.length : null), f: (v) => `${Math.round(v * 100)}% público` },
-  avanz: { t: 'Avanzados', v: (ys) => suma(ys.filter((d) => ord(d.etapa) >= ord('Negotiation'))), f: (v) => `${usd(v)} de Negotiation en adelante` },
+  avanz: { t: 'Avanzados', v: (ys) => suma(ys.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation'))), f: (v) => `${usd(v)} de Negotiation en adelante` },
 };
 
 function diapoMapa() {
@@ -962,7 +964,8 @@ function diapoMapa() {
   });
   const porRegion = Object.fromEntries(filas.map((x) => [x.n, x]));
   const maxM = Math.max(1e-9, ...filas.map((x) => x.m ?? 0));
-  const relleno = (n) => { const x = porRegion[n]; if (!met || x?.m == null) return 'var(--tarjeta-2)'; const p = Math.round(12 + 80 * (op['mapa.pintar'] === 'tgp' || op['mapa.pintar'] === 'pub' ? x.m : Math.sqrt(x.m / maxM))); return `color-mix(in srgb, var(--verde) ${p}%, var(--tarjeta-2))`; };
+  // Colores suaves (pedido de Beto, 21-nov): región sin deals gris claro; con deals, de 18% a 58% de verde según la métrica.
+  const relleno = (n) => { const x = porRegion[n]; if (!x?.ys.length) return 'var(--tarjeta-2)'; if (!met || x.m == null) return 'color-mix(in srgb, var(--verde) 18%, var(--tarjeta-2))'; const p = Math.round(18 + 40 * (op['mapa.pintar'] === 'tgp' || op['mapa.pintar'] === 'pub' ? x.m : Math.sqrt(x.m / maxM))); return `color-mix(in srgb, var(--verde) ${p}%, var(--tarjeta-2))`; };
   const conDatos = filas.filter((x) => x.ys.length).sort((a, b) => b.arr - a.arr || b.ys.length - a.ys.length);
   const maxArr = Math.max(1, ...conDatos.map((x) => x.arr));
   const tipReg = (x) => `<b>${esc(x.n)}</b><br>${x.ys.length} deals · ${usd(x.arr)}<br>Público ${x.pub} · Privado ${x.ys.length - x.pub} · TGP ${x.tgp}${x.avanz.length ? `<br>De Negotiation en adelante: ${x.avanz.map((d) => esc(d.cuenta)).join(', ')}` : ''}${met && x.m != null ? `<br><b>${met.f(x.m)}</b>` : ''}<small>Clic para ir a la región · doble clic en la tabla para la lista</small>`;
@@ -991,10 +994,11 @@ function diapoMapa() {
 
 function montarMapa(el, ctx) {
   const cont = el.querySelector('#m-main'), mini = el.querySelector('#m-mini'), panel = el.querySelector('#m-panel');
-  if (!cont) return;
+  if (!cont?.isConnected) return; // se repintó mientras cargaba el mapa: monta el repintado nuevo
   const W = cont.clientWidth, H = cont.clientHeight, MW = mini.clientWidth, MH = mini.clientHeight;
+  if (!W || !H) return;
   const kMin = ajustar(cajaZona(ZONAS.chile), W, H).k * 0.8, kMax = 9000;
-  vistaMapa ??= ajustar(cajaZona(ZONAS.centro), W, H);
+  if (!(vistaMapa?.k > 0) || !Number.isFinite(vistaMapa.x)) vistaMapa = ajustar(cajaZona(ZONAS.chile), W, H);
   const regiones = Object.entries(geoW.regiones).map(([n, g]) => `<path d="${g.d}" data-rg="${esc(n)}" fill="${ctx.relleno(n)}" stroke="var(--tarjeta)" stroke-width="${regionSel === n ? 2.5 : 1}" vector-effect="non-scaling-stroke" ${ctx.porRegion[n] ? `data-tip="${esc(ctx.tipReg(ctx.porRegion[n]))}"` : ''} style="${regionSel === n ? 'stroke:var(--estancado)' : ''}"/>`).join('');
   const comunas = Object.entries(geoW.comunas).map(([n, g]) => `<path d="${g.d}" fill="none" stroke="var(--tinta-3)" stroke-width=".6" vector-effect="non-scaling-stroke"/>`).join('');
   cont.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mapa navegable de Chile con los deals"><rect width="${W}" height="${H}" fill="transparent"/>
@@ -1009,39 +1013,58 @@ function montarMapa(el, ctx) {
   const S = (lon, lat, v) => [W / 2 + (wx(lon) - v.x) * v.k, H / 2 + (wy(lat) - v.y) * v.k];
   const maxD = Math.max(1, ...ctx.conUbic.map((d) => d.arrUsd));
 
-  function dibujar() {
+  // Los puntos se crean una vez; al moverse solo cambian posición y tamaño (rápido). Etiquetas y panel se recalculan al detenerse.
+  const grupos = {};
+  const pts = ctx.conUbic.map((d) => {
+    const key = d.ubic.lat.toFixed(3) + ',' + d.ubic.lon.toFixed(3);
+    return { d, i: (grupos[key] = (grupos[key] ?? -1) + 1), gx: wx(d.ubic.lon), gy: wy(d.ubic.lat), s: d.arrUsd ? Math.sqrt(d.arrUsd / maxD) : -1, nac: d.ubic.alcance === 'nacional' };
+  });
+  svg.querySelector('#m-puntos').innerHTML = pts.map(({ d, nac }) => {
+    const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'} · ${esc(etapaCorta(d.etapa))}${d.perdido ? ' (perdido)' : ''}<br>${d.owner ? esc(d.owner) + ' · ' : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(d.ubic.direccion ?? '')}${d.ubic.comuna ? ', ' + esc(d.ubic.comuna) : ''}${nac ? '<br>Red nacional: punto en la casa matriz' : ''}<small>Clic para ver el detalle</small>`;
+    return `<circle fill="${colorDeal(d)}" fill-opacity="${d.arrUsd ? 0.9 : 0.55}" stroke="${nac ? 'var(--tinta)' : '#FCFCFC'}" stroke-width="${nac ? 1.4 : 1}" ${nac ? 'stroke-dasharray="2 1.5"' : ''} data-deal="${d.id}" data-tip="${esc(tip)}" style="cursor:pointer"/>`;
+  }).join('');
+  const nodos = [...svg.querySelectorAll('#m-puntos circle')];
+  let vis = [];
+  function mover() {
     const v = vistaMapa;
     svg.querySelector('#m-geo').setAttribute('transform', `translate(${W / 2 - v.x * v.k},${H / 2 - v.y * v.k}) scale(${v.k})`);
     svg.querySelector('#m-com').style.opacity = v.k > 400 ? Math.min(1, (v.k - 400) / 600) : 0;
     // De cerca el color de las regiones se aclara para que manden los puntos y las comunas.
-    svg.querySelector('#m-geo').style.fillOpacity = v.k > 250 ? Math.max(0.2, 1 - (v.k - 250) / 600) : 1;
-    // Puntos: tamaño según ARR y crecen un poco al acercarse; los que comparten dirección se abren en espiral.
-    const r0 = Math.max(2.6, Math.min(8, 1.6 * Math.log2(v.k / 6)));
-    const grupos = {}, vis = [], occ = [];
-    let pts = '';
-    for (const d of ctx.conUbic) {
-      const key = d.ubic.lat.toFixed(3) + ',' + d.ubic.lon.toFixed(3);
-      const i = (grupos[key] = (grupos[key] ?? -1) + 1);
-      let [x, y] = S(d.ubic.lon, d.ubic.lat, v);
-      const r = d.arrUsd ? r0 + r0 * 2.4 * Math.sqrt(d.arrUsd / maxD) : r0 * 0.75;
-      if (i) { const a = i * 2.4, dist = r0 * 1.7 * Math.sqrt(i); x += Math.cos(a) * dist; y += Math.sin(a) * dist; }
-      if (x < -30 || y < -30 || x > W + 30 || y > H + 30) continue;
-      if (x >= 0 && y >= 0 && x <= W && y <= H) vis.push({ d, x, y, r });
-      const nac = d.ubic.alcance === 'nacional';
-      const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'} · ${esc(etapaCorta(d.etapa))}${d.perdido ? ' (perdido)' : ''}<br>${d.owner ? esc(d.owner) + ' · ' : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(d.ubic.direccion ?? '')}${d.ubic.comuna ? ', ' + esc(d.ubic.comuna) : ''}${nac ? '<br>Red nacional: punto en la casa matriz' : ''}<small>Clic para ver el detalle</small>`;
-      pts += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(1)}" fill="${colorDeal(d)}" fill-opacity="${d.arrUsd ? 0.88 : 0.5}" stroke="${nac ? 'var(--tinta)' : '#FCFCFC'}" stroke-width="${nac ? 1.4 : 1}" ${nac ? 'stroke-dasharray="2 1.5"' : ''} data-deal="${d.id}" data-tip="${esc(tip)}" style="cursor:pointer"/>`;
-    }
-    svg.querySelector('#m-puntos').innerHTML = pts;
+    svg.querySelector('#m-geo').style.fillOpacity = v.k > 250 ? Math.max(0.25, 1 - (v.k - 250) / 600) : 1;
+    const r0 = Math.max(2.8, Math.min(8, 1.6 * Math.log2(v.k / 6)));
+    vis = [];
+    pts.forEach((p, n) => {
+      let x = W / 2 + (p.gx - v.x) * v.k, y = H / 2 + (p.gy - v.y) * v.k;
+      const r = p.s >= 0 ? r0 + r0 * 2.4 * p.s : r0 * 0.75;
+      if (p.i) { const a = p.i * 2.4, dist = r0 * 1.7 * Math.sqrt(p.i); x += Math.cos(a) * dist; y += Math.sin(a) * dist; }
+      const fuera = x < -30 || y < -30 || x > W + 30 || y > H + 30;
+      const c = nodos[n];
+      c.style.display = fuera ? 'none' : '';
+      if (fuera) return;
+      c.setAttribute('cx', x.toFixed(1)); c.setAttribute('cy', y.toFixed(1)); c.setAttribute('r', r.toFixed(1));
+      if (x >= 0 && y >= 0 && x <= W && y <= H) vis.push({ d: p.d, x, y, r });
+    });
+    // Minimapa: el rectángulo es lo que estás viendo.
+    const rv = mini.querySelector('#mini-vista');
+    const x0 = MW / 2 + (v.x - W / 2 / v.k - mk.x) * mk.k, y0 = MH / 2 + (v.y - H / 2 / v.k - mk.y) * mk.k;
+    rv.setAttribute('x', x0); rv.setAttribute('y', y0); rv.setAttribute('width', Math.max(3, (W / v.k) * mk.k)); rv.setAttribute('height', Math.max(3, (H / v.k) * mk.k));
+  }
+  function detalle() {
+    const v = vistaMapa, occ = [];
+    vis.sort((a, b) => b.d.arrUsd - a.d.arrUsd);
     // Etiquetas que no se pisan: regiones de lejos, nombres de deals y comunas de cerca.
     const cabe = (x, y, w, h) => { if (x < 2 || y < 2 || x + w > W - 2 || y + h > H - 2) return false; if (occ.some((o) => x < o[0] + o[2] && x + w > o[0] && y < o[1] + o[3] && y + h > o[1])) return false; occ.push([x, y, w, h]); return true; };
     let etqR = '', etq = '';
     if (v.k < 260) {
-      for (const r of datos.regiones) {
-        const x = ctx.porRegion[r.nombre]; if (!x?.ys.length) continue;
-        const [sx, sy] = S(r.lon, r.lat, v);
-        const txt = `${r.nombre} · ${ctx.met && x.m != null ? ctx.met.f(x.m) : usd(x.arr)}`;
-        const w = txt.length * 6.6 + 10;
-        if (cabe(sx + 12, sy - 9, w, 18)) etqR += `<g style="pointer-events:none"><rect x="${sx + 12}" y="${sy - 9}" width="${w}" height="18" rx="5" fill="var(--tarjeta)" fill-opacity=".9" stroke="var(--borde)"/><text x="${sx + 17}" y="${sy + 4}" style="font-size:11.5px;font-weight:600;fill:var(--tinta)">${esc(txt)}</text></g>`;
+      // Primero las regiones con más deals; si no cabe a la derecha, prueba a la izquierda y luego arriba o abajo.
+      const orden = [...datos.regiones].filter((r) => ctx.porRegion[r.nombre]?.ys.length).sort((a, b) => ctx.porRegion[b.nombre].ys.length - ctx.porRegion[a.nombre].ys.length);
+      for (const r of orden) {
+        const x = ctx.porRegion[r.nombre];
+        const sx = W / 2 + (wx(r.lon) - v.x) * v.k, sy = H / 2 + (wy(r.lat) - v.y) * v.k;
+        const txt = `${r.nombre} · ${x.ys.length} · ${ctx.met && x.m != null && !['arr', 'n'].includes(op['mapa.pintar']) ? ctx.met.f(x.m) : usd(x.arr)}`;
+        const w = txt.length * 6.4 + 10;
+        const pos = [[sx + 12, sy - 9], [sx - 12 - w, sy - 9], [sx + 12, sy - 30], [sx + 12, sy + 12], [sx - 12 - w, sy - 30], [sx - 12 - w, sy + 12]].find(([px, py]) => cabe(px, py, w, 18));
+        if (pos) etqR += `<g style="pointer-events:none"><line x1="${sx}" y1="${sy}" x2="${pos[0] < sx ? pos[0] + w : pos[0]}" y2="${pos[1] + 9}" stroke="var(--tinta-3)" stroke-width=".8"/><rect x="${pos[0]}" y="${pos[1]}" width="${w}" height="18" rx="5" fill="var(--tarjeta)" fill-opacity=".94" stroke="var(--borde)"/><text x="${pos[0] + 5}" y="${pos[1] + 13}" style="font-size:11.5px;font-weight:600;fill:var(--tinta)">${esc(txt)}</text></g>`;
       }
     }
     if (v.k > 700) {
@@ -1061,30 +1084,31 @@ function montarMapa(el, ctx) {
     }
     svg.querySelector('#m-etq-r').innerHTML = etqR;
     svg.querySelector('#m-etq').innerHTML = etq;
-    // Minimapa: el rectángulo es lo que estás viendo.
-    const rv = mini.querySelector('#mini-vista');
-    const x0 = MW / 2 + (v.x - W / 2 / v.k - mk.x) * mk.k, y0 = MH / 2 + (v.y - H / 2 / v.k - mk.y) * mk.k;
-    const ww = (W / v.k) * mk.k, hh = (H / v.k) * mk.k;
-    rv.setAttribute('x', x0); rv.setAttribute('y', y0); rv.setAttribute('width', Math.max(3, ww)); rv.setAttribute('height', Math.max(3, hh));
     // Panel con lo que se ve en pantalla.
     const ds = vis.map((p) => p.d);
-    const top = [...ds].sort((a, b) => b.arrUsd - a.arrUsd).slice(0, 6);
+    const top = ds.slice(0, 6);
     const zona = Object.entries(ZONAS).find(([, z]) => { const a = ajustar(cajaZona(z), W, H); return Math.abs(Math.log(a.k / v.k)) < 0.25 && Math.hypot(a.x - v.x, a.y - v.y) * v.k < 60; })?.[1][0];
     panel.innerHTML = `<div class="ep-cab"><b>En pantalla${zona ? ` · ${zona}` : ''}</b><span>${ds.length} de ${ctx.conUbic.length} deals</span></div>
       <div class="ep-nums"><div><b>${usd(suma(ds))}</b>ARR</div><div><b>${ds.filter((d) => d.sector === 'Público').length}/${ds.filter((d) => d.sector !== 'Público').length}</b>público/privado</div><div><b>${ds.filter((d) => d.tgp).length}</b>de TGP</div><div><b>${ds.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation')).length}</b>avanzados</div></div>
       <div class="ep-top">${top.map((d) => `<button class="pill" data-deal="${d.id}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${colorDeal(d)};margin-right:5px"></span>${esc(d.cuenta)} <small>${usd(d.arrUsd)}</small></button>`).join('') || '<span class="nota">Muévete o aléjate para ver deals</span>'}</div>`;
   }
+  let tDetalle = null;
+  function dibujar(conDetalle = false) {
+    mover();
+    clearTimeout(tDetalle);
+    if (conDetalle) detalle(); else { svg.querySelector('#m-etq').innerHTML = ''; tDetalle = setTimeout(detalle, 140); }
+  }
   let pendiente = false;
   const redibujar = () => { if (pendiente) return; pendiente = true; requestAnimationFrame(() => { pendiente = false; dibujar(); }); };
   const limitar = (v) => ({ ...v, k: Math.min(kMax, Math.max(kMin, v.k)) });
-  function irA(dest, ms = 550) {
+  function irA(dest, ms = 320) {
     cancelAnimationFrame(anim);
     const a = { ...vistaMapa }, b = limitar(dest), t0 = performance.now();
     const paso = (t) => {
       const u = Math.min(1, (t - t0) / ms), e = u < 0.5 ? 2 * u * u : 1 - (-2 * u + 2) ** 2 / 2;
       const k = Math.exp(Math.log(a.k) + (Math.log(b.k) - Math.log(a.k)) * e);
       vistaMapa = { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e, k };
-      dibujar();
+      dibujar(u >= 1);
       if (u < 1) anim = requestAnimationFrame(paso);
     };
     anim = requestAnimationFrame(paso);
@@ -1094,13 +1118,13 @@ function montarMapa(el, ctx) {
   svg.addEventListener('wheel', (e) => {
     e.preventDefault();
     const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, v = vistaMapa;
-    const k = Math.min(kMax, Math.max(kMin, v.k * Math.exp(-e.deltaY * 0.0018)));
+    const k = Math.min(kMax, Math.max(kMin, v.k * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.006)));
     const gx = v.x + (mx - W / 2) / v.k, gy = v.y + (my - H / 2) / v.k;
     vistaMapa = { x: gx - (mx - W / 2) / k, y: gy - (my - H / 2) / k, k };
     redibujar();
   }, { passive: false });
   // Arrastre para moverse; un clic sin arrastre en una región la acerca.
-  let arr = null, movio = false;
+  let arr = null, movio = false, tClic = null;
   svg.addEventListener('pointerdown', (e) => { arr = { x: e.clientX, y: e.clientY, v: { ...vistaMapa } }; movio = false; cancelAnimationFrame(anim); });
   addEventListener('pointermove', (e) => {
     if (!arr || !svg.isConnected) return;
@@ -1116,7 +1140,8 @@ function montarMapa(el, ctx) {
     if (movio) { e.stopPropagation(); movio = false; return; }
     if (e.target.closest('[data-deal]')) return;
     const rg = e.target.closest('[data-rg]');
-    if (rg) { e.stopPropagation(); regionSel = rg.dataset.rg; irARegionMapa(regionSel); el.querySelectorAll('tr[data-region]').forEach((t) => t.classList.toggle('sel', t.dataset.region === regionSel)); }
+    // Se espera un poco por si es un doble clic (que acerca en ese punto en vez de ir a la región).
+    if (rg) { e.stopPropagation(); clearTimeout(tClic); tClic = setTimeout(() => { regionSel = rg.dataset.rg; irARegionMapa(regionSel); el.querySelectorAll('tr[data-region]').forEach((t) => t.classList.toggle('sel', t.dataset.region === regionSel)); }, 240); }
   }, true);
   // Minimapa: clic o arrastre para moverse a ese lugar.
   const msvg = mini.querySelector('svg');
@@ -1125,9 +1150,16 @@ function montarMapa(el, ctx) {
   msvg.addEventListener('pointerdown', (e) => { mArr = true; msvg.setPointerCapture?.(e.pointerId); centrarEn(e); });
   msvg.addEventListener('pointermove', (e) => mArr && centrarEn(e));
   msvg.addEventListener('pointerup', () => (mArr = false));
+  // Doble clic en el mapa: acerca al doble en ese punto.
+  svg.addEventListener('dblclick', (e) => {
+    if (e.target.closest('[data-deal]')) return;
+    e.stopPropagation(); clearTimeout(tClic);
+    const r = svg.getBoundingClientRect(), v = vistaMapa;
+    irA({ x: v.x + (e.clientX - r.left - W / 2) / v.k, y: v.y + (e.clientY - r.top - H / 2) / v.k, k: v.k * 2 }, 280);
+  });
   el.querySelectorAll('[data-zona]').forEach((b) => (b.onclick = () => { regionSel = null; irA(ajustar(cajaZona(ZONAS[b.dataset.zona]), W, H)); }));
   el.querySelectorAll('[data-zoom]').forEach((b) => (b.onclick = () => irA({ ...vistaMapa, k: vistaMapa.k * Number(b.dataset.zoom) }, 300)));
-  dibujar();
+  dibujar(true);
 }
 let irARegionMapa = () => {};
 let abortMapa = null;
@@ -1211,7 +1243,8 @@ function pintarPendientes() {
   } else if (tab === 'toca') {
     h = `<div class="personas">${personas().map((p) => { const xs = p.nosToca.filter(dealPasa); return `<div class="per">${cabPersona(p, `${xs.length} le tocan`)}<ul>${xs.map(itemDeal).join('') || '<li>Nada pendiente</li>'}</ul></div>`; }).join('')}</div>`;
   } else if (tab === 'tareas') {
-    h = `<div class="personas">${personas().map((p) => `<div class="per">${cabPersona(p, `${p.tareas.length} tareas`)}<ul>${p.tareas.map((t) => `<li ${t.deal ? `data-deal="${t.deal.id}"` : ''}><span class="lin"><b>${esc(t.deal?.cuenta ?? 'Tarea')}</b><span class="fecha ${t.vencida ? 'critico' : ''}">${t.vence ? fecha(t.vence) : 'Sin fecha'}</span></span><span class="txt">${esc(t.texto)}</span></li>`).join('') || '<li>Sin tareas</li>'}</ul></div>`).join('')}</div>`;
+    const tareasDe = (p) => p.tareas.filter((t) => !t.deal || dealPasa(datos.deals.find((d) => d.id === t.deal.id) ?? {}));
+    h = `<div class="personas">${personas().map((p) => `<div class="per">${cabPersona(p, `${tareasDe(p).length} tareas`)}<ul>${tareasDe(p).map((t) => `<li ${t.deal ? `data-deal="${t.deal.id}"` : ''}><span class="lin"><b>${esc(t.deal?.cuenta ?? 'Tarea')}</b><span class="fecha ${t.vencida ? 'critico' : ''}">${t.vence ? fecha(t.vence) : 'Sin fecha'}</span></span><span class="txt">${esc(t.texto)}</span></li>`).join('') || '<li>Sin tareas</li>'}</ul></div>`).join('')}</div>`;
   } else if (tab === 'cliente') {
     h = `<div class="personas">${personas().map((p) => { const xs = p.esperandoCliente.filter(dealPasa); return `<div class="per">${cabPersona(p, `${xs.length} esperando`)}<ul>${xs.map((x) => `<li data-deal="${x.id}"><span class="lin"><b>${esc(x.cuenta)}</b><span class="fecha">${x.diasInactivo} d sin noticias</span></span><span class="txt">${esc(x.nextStep ?? '')}</span></li>`).join('') || '<li>Nada</li>'}</ul></div>`; }).join('')}</div>`;
   } else if (tab === 'presionar') {
@@ -1236,7 +1269,7 @@ function abrirPendientes(si = !$('#pend').classList.contains('abierto')) {
 // =====================================================================
 function abrirLista(titulo, sub, xs) {
   const grupos = {};
-  for (const d of xs) (grupos[d.fuente] ??= []).push(d);
+  for (const d of xs) (grupos[d.tgp ? 'TGP' : d.fuente] ??= []).push(d);
   const orden = Object.keys(grupos).sort((a, b) => (b === 'TGP') - (a === 'TGP') || grupos[b].length - grupos[a].length);
   $('#detalle').innerHTML = `<div class="det lista">
     <div class="cabd"><div><h3>${esc(titulo)}</h3><span style="color:var(--tinta-3)">${esc(sub)}</span></div><button class="cerrar" aria-label="Cerrar">×</button></div>
@@ -1376,6 +1409,7 @@ async function cargar(refrescar = false) {
 $('#refrescar').onclick = () => cargar(true);
 let tamano;
 addEventListener('resize', () => { clearTimeout(tamano); tamano = setTimeout(pintar, 200); });
+addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)) - 1; if (n >= 0 && n !== actual && n < DIAPOS.length) ir(n); });
 setInterval(() => cargar(), 5 * 60 * 1000);
 ponerTema(params.has('oscuro') || (!params.has('claro') && guardado('vu-tema', 'claro') === 'oscuro'));
 await cargar();
