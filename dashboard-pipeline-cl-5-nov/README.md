@@ -12,7 +12,7 @@ Abre http://localhost:3000. Necesita `.env.local` con `ATTIO_API_KEY=...`. Desde
 
 ## Vista única (rediseño del 20-nov-2026)
 Todo vive en `/` (public/index.html). Panel, Torre de control, modo TV e Iniciativas se fusionaron; `/panel` redirige a `/` y `/tv` abre `/?auto=1`.
-- Barra fija: filtros Owner (Tomi, Anto, Beto), Origen (TGP o equipo) y Sector (público = Client segment "Government"), que valen para todo. Botón ▶ Avanzar solo (30 s por diapositiva, apagado por defecto) y pantalla completa. Un solo modo de color, intermedio (21-nov). Todo filtro u opción que no está en su valor por defecto ("ver todo") se marca en ámbar, con "✕ Quitar filtros" y "↺ Ver todo" para volver.
+- Barra fija: filtros Owner (Tomi, Anto, Beto), Origen (TGP o equipo) y Sector (público = Client segment "Government"), que valen para todo. Botón ▶ Avanzar solo (30 s por diapositiva, apagado por defecto) y pantalla completa. Un solo modo de color: paleta Bosque (negro verdoso, verde neón y blanco; elegida el 21-nov). Todo filtro u opción que no está en su valor por defecto ("ver todo") se marca en ámbar, con "✕ Quitar filtros" y "↺ Ver todo" para volver.
 - 10 diapositivas, se pasan con ◀ ▶ o el teclado: Camino al millón (con "¿Alcanza lo avanzado?"), Actividad semanal, Carrera de deals (alto por tramos de ARR), Pipeline por etapa + Demand generation, Evolución del pipeline, Días por etapa, Pipeline por owner (sin Esteban), Calidad de TGP, Carrera de países y Mapa de Chile.
 - En todos los gráficos: el dato al pasar el mouse y la lista de deals con doble clic.
 - Pendientes del equipo: desplegable abajo (resumen, le toca, tareas, esperando al cliente, dónde presionar, higiene).
