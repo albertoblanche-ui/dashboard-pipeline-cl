@@ -85,19 +85,3 @@ export const ATTIO = {
     mustWin: 'must_win',
   },
 };
-
-export const INICIATIVAS = {
-  fechaPuntoPartidaOKR: '2026-10-19',
-  fechasInicio: {
-    tgp: '2026-10-15',
-    centralizacion: '2026-10-22',
-    agenteAttioV3: '2026-10-26'
-  },
-  ventanaDiasConversion: 45,
-  idSebaParaSDR: 'sebastian.zaliasnik@telepatia.ai',
-  campos: {
-    calificacionTgp: 'calificacion_tgp',
-    motivoCalificacion: 'motivo_calificacion',
-    betoParticipa: 'beto_participa'
-  }
-};

@@ -3,307 +3,1247 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Torre de control</title>
-<link rel="stylesheet" href="/styles.css">
+<title>Pipeline Chile</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  header {
-    position: sticky; top: 0; z-index: 5; background: var(--plano); border-bottom: 1px solid var(--borde);
-    padding: 12px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;
+  /* Vista única (rediseño 20-nov-2026): reemplaza Panel, Torre de control, modo TV e Iniciativas.
+     Marca Telepatía: Carbon Black, Living Green, Mineral Green, Calcium White y escala oliva. */
+  :root {
+    --carbon: #1C211C; --verde: #055A35; --mineral: #9FA782; --calcio: #F6F5EB;
+    --olivo-100: #ECF1E9; --olivo-200: #D5E0D2; --olivo-300: #BCCCB7; --olivo-500: #8AA285; --olivo-700: #576A55;
+    --fondo: var(--calcio); --tarjeta: #FCFCFC; --tarjeta-2: var(--olivo-100); --borde: var(--olivo-200);
+    --tinta: var(--carbon); --tinta-2: var(--olivo-700); --tinta-3: var(--olivo-500);
+    --acento: var(--verde); --acento-suave: #CEEADC;
+    --equipo: var(--verde); --tgp: var(--mineral);
+    --sube: #1E7A4C; --sube-fondo: #DDF1E5; --estancado: #C6403A; --estancado-fondo: #F8E1DF; --espera: #D99A12; --espera-fondo: #FBF0D5;
+    --normal-borde: var(--olivo-300);
+    --serif: 'IBM Plex Serif', Georgia, serif; --sans: 'IBM Plex Sans', system-ui, sans-serif;
+    color-scheme: light;
   }
-  .header-left { display: flex; align-items: center; gap: 16px; }
-  .header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  main { padding: 24px; max-width: 1600px; margin: 0 auto; display: grid; gap: 24px; }
-  .panel { background: var(--superficie); border: 1px solid var(--borde); border-radius: var(--radio); padding: 20px; }
-  .panel h2 { font-size: 16px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
-  
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-  .kpi { background: var(--superficie); padding: 16px; border-radius: var(--radio); border: 1px solid var(--borde); }
-  .kpi .etq { font-size: 12px; color: var(--tinta-2); text-transform: uppercase; font-weight: 600; }
-  .kpi .num { font-size: 28px; font-weight: 700; margin: 4px 0; color: var(--azul); }
-  .kpi .sub { font-size: 12px; color: var(--tinta-3); }
+  body.oscuro {
+    --fondo: var(--carbon); --tarjeta: #252B25; --tarjeta-2: #2E352D; --borde: #3A4239;
+    --tinta: #FCFCFC; --tinta-2: rgb(252 252 252 / .74); --tinta-3: rgb(252 252 252 / .5);
+    --acento: var(--mineral); --acento-suave: #34402F;
+    --equipo: #CEEADC; --tgp: #7E8A5E;
+    --sube: #3FB57A; --sube-fondo: #1E5A3A; --estancado: #E0574F; --estancado-fondo: #6E2420; --espera: #F2CF6B; --espera-fondo: #6B5416;
+    --normal-borde: #4A5449;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--fondo); color: var(--tinta); font: 14px/1.45 var(--sans); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased;
+    display: grid; grid-template-rows: auto 1fr auto; overflow: hidden; }
+  h1, h2, h3 { margin: 0; font-family: var(--serif); font-weight: 600; letter-spacing: -0.01em; }
+  button { font: inherit; cursor: pointer; color: inherit; }
 
-  /* Gráficos de Tracción */
-  .graficos-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 20px; }
-  .chart-wow { display: flex; align-items: flex-end; gap: 12px; height: 140px; padding-top: 24px; border-bottom: 1px solid var(--borde); }
-  .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end; gap: 6px; }
-  .bar-fill { width: 100%; max-width: 38px; background: var(--azul); border-radius: 4px 4px 0 0; min-height: 4px; transition: height 0.3s; }
-  .bar-lbl { font-size: 11px; color: var(--tinta-3); }
-  .bar-val { font-size: 11px; font-weight: 700; color: var(--tinta); }
+  /* Barra fija arriba: logo, filtros que valen para todo, controles */
+  .top { display: flex; align-items: center; gap: 10px 22px; padding: 10px 24px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; background: var(--fondo); }
+  .top .logo { height: 22px; display: block; }
+  .logo-o { display: none !important; } body.oscuro .logo-c { display: none !important; } body.oscuro .logo-o { display: block !important; }
+  .filtros { display: flex; gap: 8px 18px; flex-wrap: wrap; align-items: center; }
+  .grupo { display: flex; align-items: center; gap: 6px; }
+  .grupo > span { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .05em; }
+  .seg { display: inline-flex; background: var(--tarjeta-2); border-radius: 9px; padding: 2px; gap: 2px; }
+  .seg button { border: 0; background: transparent; padding: 4px 11px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--tinta-2); white-space: nowrap; }
+  .seg button[aria-pressed='true'] { background: var(--tarjeta); color: var(--tinta); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
+  body.oscuro .seg button[aria-pressed='true'] { background: var(--verde); color: #FCFCFC; }
+  .top .der { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--tinta-3); font-size: 12.5px; }
+  .btn { border: 1px solid var(--borde); background: var(--tarjeta); border-radius: 9px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .btn:hover { border-color: var(--olivo-500); }
+  .btn[aria-pressed='true'] { background: var(--verde); border-color: var(--verde); color: #FCFCFC; }
+  .btn.ic { padding: 6px 9px; }
 
-  .progreso-meta { display: flex; height: 26px; border-radius: 8px; overflow: hidden; background: var(--superficie-2); margin: 16px 0 10px; }
-  .prog-firmado { background: var(--bien); }
-  .prog-avanzado { background: var(--azul); }
-  .prog-temprano { background: var(--aviso); }
-  .leyenda-meta { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; }
-  .item-leyenda { display: flex; align-items: center; gap: 6px; }
-  .punto-leyenda { width: 10px; height: 10px; border-radius: 3px; }
-  .vistas { display: flex; gap: 4px; background: var(--superficie-2); padding: 3px; border-radius: 10px; }
-  .vistas a { padding: 5px 14px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px; color: var(--tinta-2); }
-  .vistas a.activa { background: var(--superficie); color: var(--tinta); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
+  /* Diapositivas: una a la vez, cada una cabe en la pantalla */
+  main { position: relative; min-height: 0; padding: 14px 24px 6px; }
+  .diapo { display: none; height: 100%; gap: 16px; min-height: 0; }
+  .diapo.activa { display: grid; animation: aparece .45s ease both; }
+  .diapo.una { grid-template-rows: minmax(0, 1fr); }
+  .diapo.dos { grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); }
+  @keyframes aparece { from { opacity: 0; transform: translateY(8px); } }
+  .card { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 16px; padding: 16px 20px; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+  .card > header { display: flex; align-items: center; gap: 6px 14px; flex-wrap: wrap; margin-bottom: 12px; }
+  .card > header h2 { font-size: 21px; }
+  .card > header .sub { color: var(--tinta-3); font-size: 13px; }
+  .card > header .ops { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .cuerpo { flex: 1; min-height: 0; position: relative; }
+  .grafico { width: 100%; height: 100%; }
+  .grafico svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  svg text { font-family: var(--sans); fill: var(--tinta-2); font-size: 12px; }
+  svg .eje { stroke: var(--borde); }
+  svg [data-lista] { cursor: zoom-in; }
+  svg [data-tip]:hover { opacity: .82; }
+  .resumen { margin: 10px 0 0; font-size: 13.5px; color: var(--tinta-2); }
+  .resumen b { color: var(--tinta); }
+  .nota { font-size: 12px; color: var(--tinta-3); margin: 8px 0 0; }
+  .leyenda { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--tinta-2); }
+  .leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; }
+
+  /* Camino al millón */
+  .kpis { display: flex; gap: 10px 28px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 10px; }
+  .kpi { display: grid; gap: 0; }
+  .kpi small { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .05em; }
+  .kpi b { font-family: var(--serif); font-size: 30px; line-height: 1.1; font-weight: 600; }
+  .kpi span { font-size: 12.5px; color: var(--tinta-2); }
+  .kpi.grande b { font-size: 40px; color: var(--acento); }
+  .avance { flex: 1; min-width: 220px; display: grid; gap: 6px; padding-bottom: 6px; }
+  .avance .riel { height: 14px; background: var(--tarjeta-2); border-radius: 999px; overflow: hidden; }
+  .avance .riel i { display: block; height: 100%; background: linear-gradient(90deg, var(--olivo-700), var(--verde)); border-radius: 999px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  body.oscuro .avance .riel i { background: linear-gradient(90deg, var(--olivo-700), var(--mineral), var(--calcio)); }
+  .avance .marcas { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--tinta-3); }
+
+  /* Kanban: nombre y ARR siempre visibles; el alto va por tramos de ARR */
+  .kanban { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; height: 100%; }
+  .col { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .col .cab { padding: 0 2px 6px; border-bottom: 3px solid var(--olivo-300); margin-bottom: 6px; }
+  .col .cab b { font-size: 14px; display: block; }
+  .col .cab small { color: var(--tinta-3); font-size: 12px; }
+  .col.meta .cab { border-color: var(--verde); } body.oscuro .col.meta .cab { border-color: var(--mineral); }
+  .pila { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
+  .deal { flex: none; border: 1px solid var(--borde); border-left: 5px solid var(--normal-borde); border-radius: 7px; background: var(--tarjeta-2);
+    padding: 0 8px; display: flex; flex-direction: column; justify-content: center; gap: 1px; overflow: hidden; text-align: left; line-height: 1.2; min-width: 0;
+    animation: entra .45s cubic-bezier(.2,.8,.2,1) both; }
+  .deal:hover { border-color: var(--olivo-500); }
+  .deal .l1 { display: flex; gap: 6px; justify-content: space-between; align-items: baseline; white-space: nowrap; min-width: 0; font-size: 12.5px; }
+  .deal .nom { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .deal .arr { color: var(--tinta-2); font-size: 12px; flex: none; }
+  .deal .l2 { font-size: 11.5px; color: var(--tinta-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .deal .own { font-weight: 700; }
+  .deal.t3 .nom, .deal.t4 .nom { font-size: 14.5px; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .deal.t3 .l1, .deal.t4 .l1 { flex-direction: column; align-items: flex-start; white-space: normal; gap: 2px; }
+  .deal.t3 .arr, .deal.t4 .arr { font-family: var(--serif); font-size: 20px; font-weight: 600; color: var(--tinta); }
+  .deal.t4 .arr { font-size: 26px; }
+  .deal.est-sube { border-left-color: var(--sube); background: var(--sube-fondo); }
+  .deal.est-estancado { border-left-color: var(--estancado); background: var(--estancado-fondo); }
+  .deal.est-espera { border-left-color: var(--espera); background: var(--espera-fondo); }
+  .deal.firmado { background: var(--verde); border-color: var(--verde); color: #FCFCFC; }
+  .deal.firmado .arr, .deal.firmado .l2 { color: rgb(252 252 252 / .85); }
+  body.oscuro .deal.firmado { background: var(--calcio); border-color: var(--calcio); color: var(--carbon); }
+  body.oscuro .deal.firmado .arr, body.oscuro .deal.firmado .l2 { color: var(--olivo-700); }
+  .deal .tag { font-size: 10px; font-weight: 700; letter-spacing: .03em; }
+  .deal .retro { font-size: 10px; font-weight: 700; color: var(--espera); }
+  .deal.resto { border-style: dashed; border-left-width: 1px; background: transparent; align-items: center; flex-direction: row; gap: 6px; font-size: 12px; font-weight: 600; color: var(--tinta-2); justify-content: center; }
+  .deal.resto small { font-weight: 500; color: var(--tinta-3); }
+  .deal.resto:hover { background: var(--tarjeta-2); }
+  .chips { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12.5px; color: var(--tinta-2); }
+  .chips i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 5px; border-left: 4px solid; }
+  @keyframes entra { from { opacity: 0; transform: translateX(-10px); } }
+
+  /* Pipeline por etapa */
+  .fn { display: grid; grid-template-columns: 120px 1fr 200px; gap: 12px; align-items: center; padding: 6px 4px; font-size: 13.5px; border-radius: 8px; cursor: zoom-in; }
+  .fn:hover { background: var(--tarjeta-2); }
+  .fn .riel { height: 24px; background: var(--tarjeta-2); border-radius: 6px; overflow: hidden; display: flex; }
+  .fn .riel i { display: block; height: 100%; }
+  .fn .num { text-align: right; } .fn .num small { color: var(--tinta-3); }
+  .fuentes { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .pill { border: 1px solid var(--borde); background: transparent; color: var(--tinta-2); padding: 3px 11px; border-radius: 999px; font-size: 12.5px; }
+  .pill:hover { border-color: var(--olivo-500); } .pill small { opacity: .7; margin-left: 4px; }
+  .pill[aria-pressed='true'] { background: var(--verde); border-color: var(--verde); color: #FCFCFC; }
+
+  /* Tablas */
+  .tabla-scroll { overflow: auto; max-height: 100%; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .t th { text-align: left; font-weight: 600; color: var(--tinta-3); font-size: 12px; padding: 8px 10px; border-bottom: 1px solid var(--borde); white-space: nowrap; position: sticky; top: 0; background: var(--tarjeta); }
+  .t td { padding: 11px 10px; border-bottom: 1px solid var(--borde); vertical-align: top; }
+  .t .num { text-align: right; white-space: nowrap; } .t .mal { color: var(--estancado); font-weight: 600; }
+  .t small { color: var(--tinta-3); }
+  .t [data-lista] { cursor: zoom-in; } .t tr:hover td { background: var(--tarjeta-2); }
+  .t .pct { display: grid; gap: 4px; justify-items: end; }
+  .t .pct .barra { width: 90px; height: 6px; border-radius: 3px; background: var(--tarjeta-2); overflow: hidden; }
+  .t .pct .barra i { display: block; height: 100%; background: var(--acento); }
+  .t tr.tot td { font-weight: 600; background: var(--tarjeta-2); }
+
+  /* Mapa de Chile */
+  .mapa { display: grid; grid-template-columns: minmax(340px, 58%) 1fr; gap: 22px; height: 100%; min-height: 0; }
+  .mapa-izq { display: flex; flex-direction: column; gap: 8px; min-height: 0; } .mapa-izq .grafico { flex: 1; min-height: 0; }
+  .barra-r { display: block; height: 8px; border-radius: 4px; background: var(--tarjeta-2); overflow: hidden; } .barra-r i { display: block; height: 100%; background: var(--acento); }
+  .mapa-der { display: flex; flex-direction: column; min-height: 0; }
+  .mapa-der .tabla-scroll { flex: 1; min-height: 0; }
+  .mapa-t tr[data-region] { cursor: pointer; } .mapa-t tr.sel td { background: var(--acento-suave); }
+  .mapa-t td { padding: 7px 10px; }
+
+  /* Pie: navegación y pendientes */
+  .pie { display: flex; align-items: center; gap: 12px; padding: 8px 24px 12px; color: var(--tinta-3); font-size: 12.5px; }
+  .nav { display: flex; align-items: center; gap: 6px; }
+  #puntos { display: flex; gap: 4px; }
+  #puntos button { border: 0; background: var(--tarjeta-2); width: 30px; height: 26px; border-radius: 7px; font-size: 12px; font-weight: 600; color: var(--tinta-2); }
+  #puntos button.on { background: var(--verde); color: #FCFCFC; width: auto; padding: 0 10px; }
+  #nombre { font-weight: 600; color: var(--tinta-2); }
+  .pie .ayuda { margin-left: auto; }
+  #progreso { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--acento); width: 0; z-index: 5; }
+
+  /* Desplegable de pendientes */
+  .cajon { position: fixed; left: 0; right: 0; bottom: 0; height: min(86vh, 900px); z-index: 20; background: var(--fondo); border-top: 1px solid var(--borde);
+    border-radius: 20px 20px 0 0; box-shadow: 0 -20px 60px rgb(0 0 0 / .25); transform: translateY(102%); transition: transform .35s cubic-bezier(.2,.8,.2,1);
+    display: grid; grid-template-rows: auto auto 1fr; }
+  .cajon.abierto { transform: none; }
+  .cajon .cab { display: flex; align-items: center; gap: 14px; padding: 16px 24px 8px; }
+  .cajon .cab h2 { font-size: 22px; } .cajon .cab .sub { color: var(--tinta-3); font-size: 13px; }
+  .cajon .cab .cerrar { margin-left: auto; }
+  .cajon .tabs { padding: 0 24px 10px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .cajon .dentro { overflow: auto; padding: 4px 24px 28px; min-height: 0; }
+  .personas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; }
+  .per { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 14px; padding: 14px; display: grid; gap: 10px; }
+  .per .cabp { display: flex; align-items: center; gap: 10px; }
+  .per .cabp img, .per .cabp .ini { width: 36px; height: 36px; border-radius: 50%; background: var(--olivo-300); display: grid; place-items: center; font-weight: 700; color: var(--carbon); }
+  .per h3 { font-size: 18px; } .per .cabp small { display: block; color: var(--tinta-3); font-size: 12px; }
+  .per .nums { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .per .nums div { background: var(--tarjeta-2); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; color: var(--tinta-2); }
+  .per .nums b { display: block; font-family: var(--serif); font-size: 28px; line-height: 1.05; color: var(--tinta); }
+  .per .nums .rojo b { color: var(--estancado); }
+  .per .barra { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--tarjeta-2); }
+  .per ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .per li { background: var(--tarjeta-2); border-radius: 8px; padding: 7px 10px; font-size: 13px; display: grid; gap: 2px; border-left: 4px solid var(--olivo-500); }
+  .per li[data-deal] { cursor: pointer; }
+  .per li.v1 { border-left-color: var(--espera); } .per li.v2, .per li.v3 { border-left-color: var(--estancado); }
+  .per li .lin { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+  .per li .lin b { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .per li .txt { color: var(--tinta-2); font-size: 12.5px; white-space: pre-line; }
+  .fecha { font-size: 11.5px; font-weight: 700; white-space: nowrap; color: var(--tinta-2); }
+  .fecha.critico { color: var(--estancado); } .fecha.hoy { color: var(--acento); }
+  .vacio { color: var(--tinta-3); padding: 20px 0; }
+
+  /* Tooltip, detalle y celebración */
+  #tip { position: fixed; z-index: 60; pointer-events: none; background: var(--carbon); color: #FCFCFC; border-radius: 9px; padding: 8px 11px; font-size: 12.5px; line-height: 1.4;
+    max-width: 340px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); opacity: 0; transition: opacity .12s; }
+  body.oscuro #tip { background: var(--calcio); color: var(--carbon); }
+  #tip.on { opacity: 1; } #tip b { font-weight: 700; } #tip small { opacity: .7; display: block; margin-top: 3px; }
+  dialog { border: 0; border-radius: 18px; padding: 0; width: min(580px, calc(100vw - 32px)); max-height: 86vh; background: var(--tarjeta); color: var(--tinta); box-shadow: 0 30px 80px rgb(0 0 0 / .3); }
+  dialog::backdrop { background: rgb(28 33 28 / .45); }
+  .det { padding: 22px 24px; display: grid; gap: 14px; }
+  .det .cabd { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+  .det h3 { font-size: 22px; }
+  .det .datos { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .det .datos div { background: var(--tarjeta-2); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--tinta-2); }
+  .det .datos b { display: block; font-size: 15px; color: var(--tinta); }
+  .det .ns { background: var(--acento-suave); border-radius: 10px; padding: 10px 12px; white-space: pre-line; }
+  .det ul { margin: 0; padding-left: 18px; color: var(--tinta-2); }
+  .det.lista h4 { margin: 12px 0 4px; font-size: 13px; display: flex; justify-content: space-between; }
+  .det.lista ul { list-style: none; padding: 0; display: grid; gap: 2px; }
+  .det.lista li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; padding: 7px 8px; border-radius: 8px; cursor: pointer; font-size: 13.5px; color: var(--tinta); }
+  .det.lista li:hover { background: var(--tarjeta-2); } .det.lista li small { color: var(--tinta-3); }
+  .cerrar { border: 0; background: var(--tarjeta-2); border-radius: 50%; width: 32px; height: 32px; font-size: 18px; line-height: 1; flex: none; }
+  .boton { display: inline-block; border: 1px solid var(--verde); background: var(--verde); color: #FCFCFC; padding: 7px 14px; border-radius: 8px; font-weight: 600; font-size: 13px; text-decoration: none; justify-self: start; }
+  .cargando { display: grid; place-items: center; height: 100%; color: var(--tinta-2); font-family: var(--serif); font-size: 18px; }
+  #error { display: none; position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 30; padding: 10px 16px; border: 1px solid var(--estancado); border-radius: 12px; background: var(--tarjeta); }
+  #fiesta { position: fixed; inset: 0; z-index: 70; display: none; place-items: center; background: rgb(5 90 53 / .93); color: #FCFCFC; text-align: center; }
+  #fiesta.on { display: grid; } #fiesta canvas { position: absolute; inset: 0; }
+  #fiesta .txt { position: relative; display: grid; gap: 10px; }
+  #fiesta .txt small { font-size: 22px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
+  #fiesta .txt b { font-family: var(--serif); font-size: 90px; line-height: 1; } #fiesta .txt span { font-size: 34px; }
+
+  /* Pantallas grandes (tele): todo un poco más grande */
+  @media (min-width: 1800px) and (min-height: 950px) {
+    body { font-size: 15px; } .card > header h2 { font-size: 25px; } svg text { font-size: 14px; }
+    .deal .l1 { font-size: 14px; } .deal .arr { font-size: 13px; } .deal .l2 { font-size: 12.5px; } .col .cab b { font-size: 16px; }
+    .t td { font-size: 15px; } .fn { font-size: 15px; grid-template-columns: 150px 1fr 240px; }
+  }
+  /* Celular y pantallas chicas: las diapositivas van una debajo de la otra, con scroll */
+  @media (max-width: 820px) {
+    body { overflow: auto; display: block; }
+    .top { padding: 10px 14px; } .top .der { margin-left: 0; }
+    main { padding: 10px; }
+    .diapo, .diapo.activa { display: grid; height: auto; animation: none; margin-bottom: 12px; }
+    .diapo.dos { grid-template-columns: 1fr; }
+    .card { min-height: 420px; padding: 14px; }
+    .kanban { grid-template-columns: repeat(6, 160px); overflow-x: auto; height: 640px; }
+    .pie .nav, .pie .ayuda, #auto { display: none; }
+    .fn { grid-template-columns: 90px 1fr 120px; font-size: 12.5px; }
+    .det .datos { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
-<header>
-  <div class="header-left">
-    <nav class="vistas"><a href="/panel">Panel</a><a class="activa" href="/">Torre de control</a></nav>
-    <span class="muted" style="font-size:12px" id="actualizado">Leyendo Attio...</span>
-  </div>
-  <div class="header-right">
-    <select id="filtro-owner">
-      <option value="Todos">Todos los owners</option>
-    </select>
-    <button id="refrescar">Actualizar</button>
-    <a class="boton" style="background:var(--superficie-2); color:var(--tinta); border:1px solid var(--borde);" href="/iniciativas.html">Mis iniciativas</a>
-    <a class="boton" href="/panel?tv=1">Modo TV</a>
+<header class="top">
+  <img class="logo logo-c" src="/logo-dark.svg" alt="Telepatía"><img class="logo logo-o" src="/logo-light.svg" alt="Telepatía">
+  <div class="filtros" id="filtros"></div>
+  <div class="der">
+    <span id="actualizado">Leyendo Attio…</span>
+    <button class="btn ic" id="refrescar" title="Volver a leer Attio">↻</button>
+    <button class="btn" id="auto" aria-pressed="false" title="Pasa de diapositiva cada 30 segundos">▶ Avanzar solo</button>
+    <button class="btn ic" id="tema" title="Claro u oscuro">◐</button>
+    <button class="btn ic" id="completa" title="Pantalla completa">⛶</button>
   </div>
 </header>
-<main id="app">
-  <div style="padding: 40px; text-align: center; color: var(--tinta-3);">Cargando el pipeline...</div>
-</main>
+<main id="diapos"><div class="cargando">Leyendo Attio… la primera carga toma unos 15 segundos.</div></main>
+<footer class="pie">
+  <div class="nav"><button class="btn ic" id="ant" title="Anterior (←)">◀</button><div id="puntos"></div><button class="btn ic" id="sig" title="Siguiente (→)">▶</button></div>
+  <span id="nombre"></span>
+  <span class="ayuda">Pasa el mouse para ver el dato · doble clic para ver los deals</span>
+  <button class="btn" id="abrir-pend">Pendientes del equipo ▴</button>
+</footer>
+<div id="progreso"></div>
 
-<dialog id="modal-deal">
-  <div class="modal-content" id="modal-body"></div>
-</dialog>
+<aside class="cajon" id="pend" aria-hidden="true">
+  <div class="cab"><h2>Pendientes del equipo</h2><span class="sub" id="pend-sub"></span><button class="cerrar" id="cerrar-pend" aria-label="Cerrar">×</button></div>
+  <div class="tabs" id="pend-tabs"></div>
+  <div class="dentro" id="pend-cuerpo"></div>
+</aside>
+
+<div id="tip"></div>
+<div id="error"></div>
+<dialog id="detalle"></dialog>
+<div id="fiesta"><canvas></canvas><div class="txt"><small>Nuevo contrato firmado</small><b id="fiesta-cuenta"></b><span id="fiesta-monto"></span></div></div>
 
 <script type="module">
-import { cargarDatos, usd, fecha, hora, esc, etapaCorta, estadoNextStep } from '/common.js';
-
-let datos = null;
-let ownerActual = 'Todos';
-try { ownerActual = localStorage.getItem('torre-owner') ?? 'Todos'; } catch {}
+import { cargarDatos, usd, fecha, hora, esc, estadoNextStep, etapaCorta } from '/common.js';
 
 const $ = (s) => document.querySelector(s);
-const deEllos = (d) => ownerActual === 'Todos' || d.owner === ownerActual || d.responsable === ownerActual;
+const DIA = 86_400_000;
+const ROTACION_MS = 30_000;
+const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+const COLUMNAS = [
+  { t: 'Qualification', etapas: ['Qualification'] },
+  { t: '1ª reunión', etapas: ['First meeting held'] },
+  { t: 'Build consensus', etapas: ['Build consensus'] },
+  { t: 'Negotiation', etapas: ['Negotiation'] },
+  { t: 'PoC', etapas: ['PoC preparation', 'PoC execution'] },
+  { t: 'Firmado', etapas: ['Contract signature', 'Ready for use 🎉'], meta: true },
+];
+const columnaDe = (etapa) => COLUMNAS.findIndex((c) => c.etapas.includes(etapa));
+const FUERA_DE_OWNERS = ['Esteban']; // pedido de Beto, 20-nov: Esteban no va en Pipeline por owner
+const params = new URLSearchParams(location.search);
 
-const modal = $('#modal-deal');
-window.abrirDeal = function(id) {
-  const d = datos.deals.find(x => x.id === id);
-  if (!d) return;
-  
-  let sugerencia = "Revisar contexto reciente en correos/slack para definir próximo paso.";
-  if (d.problemas.includes('Sin responsable')) sugerencia = "Asignar un owner claro a este deal en Attio.";
-  else if (d.vencido) sugerencia = `Contactar a ${d.responsable ?? 'encargado'} para fijar una nueva fecha límite realista y no dejar enfriar el deal.`;
-  else if (d.pelota === 'Cliente' && d.diasInactivo > 3) sugerencia = "Enviar un mensaje de 'ping' sutil o aportar material de valor al sponsor para retomar tracción.";
-  else if (d.estancado) sugerencia = `Deal estancado (${d.motivoRitmo}). Definir un next step con fecha o escalar internamente.`;
-  else if (d.candidatoPerdido) sugerencia = "Evaluar mover a Closed Lost para limpiar el pipeline, o hacer un último intento agresivo (ej. invitación de Tomi).";
+let datos = null;
+let ordenEtapa = {};
+const ord = (e) => ordenEtapa[e] ?? -1;
 
-  $('#modal-body').innerHTML = `
-    <div class="modal-header">
-      <div>
-        <h2 style="font-size:20px; color:var(--azul)">${esc(d.cuenta)}</h2>
-        <span class="chip sin-punto">${esc(etapaCorta(d.etapa))}</span>
-      </div>
-      <button class="modal-close" onclick="document.getElementById('modal-deal').close()">&times;</button>
-    </div>
-    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; font-size:13px;">
-      <div><strong>ARR:</strong> ${d.arrEstimado ? '≈ ' : ''}${usd(d.arrUsd)}</div>
-      <div><strong>Firma esperada:</strong> ${d.firmaEsperada ? fecha(d.firmaEsperada) : 'No definida'}</div>
-      <div><strong>Días en etapa:</strong> ${d.diasEtapa} días${d.motivoRitmo ? ` · ${d.ritmo === 'estancado' ? 'Estancado' : d.ritmo === 'espera' ? 'En espera' : 'Avanza'}: ${d.motivoRitmo}` : ''}</div>
-      <div><strong>Owner:</strong> ${esc(d.owner ?? 'Sin dueño')}</div>
-    </div>
-    <div class="sugerencia-box">
-      <strong>Sugerencia de Próximo Paso (Heurística)</strong>
-      ${sugerencia}
-    </div>
-    <div>
-      <strong style="color:var(--tinta-2); font-size:12px;">NEXT STEP ACTUAL EN ATTIO</strong>
-      <p style="background:var(--superficie-2); padding:10px; border-radius:6px; margin-top:4px; font-size:13px; line-height:1.5;">${esc(d.nextStep || 'Sin next step registrado.')}</p>
-    </div>
-    <div style="text-align:right; margin-top:8px;">
-      <a href="${d.url}" target="_blank" class="boton">Abrir en Attio &rarr;</a>
-    </div>
-  `;
-  modal.showModal();
+// ---------- Estado: filtros, opciones de cada gráfico, diapositiva ----------
+const guardado = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } };
+const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const filtro = guardado('vu-filtro', { owner: 'Todos', origen: 'Todos', sector: 'Todos' });
+const op = Object.assign({
+  'camino.vista': 'firmado', 'camino.2026': 'todo',
+  'act.metrica': 'nuevos', 'act.medida': 'n',
+  'kanban.mov': 'todo',
+  'ev.medida': 'arr', 'ev.grupo': 'etapa', 'ev.sem': '8',
+  'perm.curso': 'todas', 'perm.comparar': 'no',
+  'tgp.periodo': '12',
+  'paises.vista': 'anio',
+  'pend.tab': 'resumen',
+  'mapa.deals': 'abiertos', 'mapa.color': 'estado',
+}, guardado('vu-op', {}));
+let actual = Math.max(0, Number(location.hash.slice(1)) - 1 || 0);
+let auto = params.has('auto');
+let rotacion = null;
+
+// Un deal pasa los filtros de arriba. En la diapositiva de TGP se ignora el filtro de origen (compara TGP con el equipo).
+function pasa(d, { sinOrigen = false } = {}) {
+  return (filtro.owner === 'Todos' || d.owner === filtro.owner) &&
+    (sinOrigen || filtro.origen === 'Todos' || (filtro.origen === 'TGP') === d.tgp) &&
+    (filtro.sector === 'Todos' || d.sector === filtro.sector);
+}
+const D = (o) => datos.deals.filter((d) => pasa(d, o));
+const hayFiltro = () => filtro.owner !== 'Todos' || filtro.origen !== 'Todos' || filtro.sector !== 'Todos';
+const textoFiltro = () => hayFiltro() ? [filtro.owner !== 'Todos' && filtro.owner, filtro.origen !== 'Todos' && (filtro.origen === 'TGP' ? 'de TGP' : 'del equipo'), filtro.sector !== 'Todos' && filtro.sector.toLowerCase()].filter(Boolean).join(' · ') : '';
+const suma = (xs, k = 'arrUsd') => xs.reduce((s, d) => s + (d[k] ?? 0), 0);
+const esNuevo = (d) => Date.now() - new Date(d.creado) < 7 * DIA;
+const fechaT = (f) => new Date(f.length === 10 ? f + 'T12:00:00' : f).getTime();
+
+function htmlFiltros() {
+  const grupo = (k, etq, vals) => `<div class="grupo"><span>${etq}</span><div class="seg">${vals.map(([v, t]) => `<button data-filtro="${k}" data-v="${v}" aria-pressed="${filtro[k] === v}">${t}</button>`).join('')}</div></div>`;
+  return grupo('owner', 'Owner', [['Todos', 'Todos'], ['Tomi', 'Tomi'], ['Anto', 'Anto'], ['Beto', 'Beto']])
+    + grupo('origen', 'Origen', [['Todos', 'Todos'], ['TGP', 'TGP'], ['Equipo', 'Equipo']])
+    + grupo('sector', 'Sector', [['Todos', 'Todos'], ['Público', 'Público'], ['Privado', 'Privado']]);
+}
+// Botones de opciones de un gráfico.
+const ops = (k, vals) => `<div class="seg">${vals.map(([v, t]) => `<button data-op="${k}" data-v="${v}" aria-pressed="${op[k] === v}">${t}</button>`).join('')}</div>`;
+
+// ---------- Listas para el doble clic y tooltips ----------
+const listas = new Map();
+let nLista = 0;
+function lista(titulo, sub, deals) { const k = 'l' + nLista++; listas.set(k, { titulo, sub, ids: deals.map((d) => d.id) }); return k; }
+// Atributos para un elemento con dato al pasar el mouse y lista con doble clic.
+const dato = (tip, titulo, sub, deals) => `data-tip="${esc(tip)}"${deals?.length ? ` data-lista="${lista(titulo, sub, deals)}"` : ''}`;
+
+// ---------- Semanas ----------
+function lunes(t) { const x = new Date(t); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; }
+function semanas(n) {
+  const l = lunes(Date.now());
+  return Array.from({ length: n }, (_, i) => {
+    const desde = new Date(l); desde.setDate(l.getDate() - (n - 1 - i) * 7);
+    const hasta = new Date(desde); hasta.setDate(desde.getDate() + 7);
+    const ult = i === n - 1;
+    return { desde: desde.getTime(), hasta: hasta.getTime(), ult, etq: `${desde.getDate()}-${MESES[desde.getMonth()]}`, nombre: ult ? 'esta semana' : `semana del ${desde.getDate()}-${MESES[desde.getMonth()]}` };
+  });
+}
+const enSemana = (f, s) => { if (!f) return false; const t = fechaT(f); return t >= s.desde && t < s.hasta; };
+// Historial de etapas ordenado; etapa de un deal en un momento dado.
+const histDe = (d) => (d._h ??= [...(d.hist ?? [])].filter((h) => h[0] && h[1]).sort((a, b) => fechaT(a[1]) - fechaT(b[1])));
+function etapaAl(d, t) {
+  if (fechaT(d.creado) > t) return null;
+  let e = null;
+  for (const [et, desde] of histDe(d)) { if (fechaT(desde) <= t) e = et; else break; }
+  return e ?? (histDe(d).length ? null : d.etapa);
+}
+const transiciones = (d) => histDe(d).slice(1).map((h, i) => ({ de: histDe(d)[i][0], a: h[0], t: fechaT(h[1]) }));
+const llego = (d, k) => ord(d.etapa) >= k || histDe(d).some(([e]) => ord(e) >= k);
+const probDe = (e) => datos.etapas.find((x) => x.nombre === e)?.prob ?? 0;
+
+// ---------- Gráfico de barras apiladas (actividad, demanda, evolución) ----------
+// cols: [{ etq, tenue, segs: [{ v, color, tip, titulo, deals }], tip, titulo, deals }]
+function svgBarras(ancho, alto, cols, fmt) {
+  const m = { t: 24, r: 6, b: 28, l: 6 };
+  const W = ancho - m.l - m.r, H = alto - m.t - m.b;
+  const max = Math.max(1e-9, ...cols.map((c) => c.segs.reduce((s, x) => s + x.v, 0)));
+  const paso = W / cols.length, bw = Math.min(64, paso * 0.62);
+  return `<svg viewBox="0 0 ${ancho} ${alto}" role="img">
+    <line class="eje" x1="${m.l}" x2="${m.l + W}" y1="${m.t + H}" y2="${m.t + H}"/>
+    ${cols.map((c, i) => {
+      const cx = m.l + paso * i + paso / 2;
+      let y0 = m.t + H;
+      const tot = c.segs.reduce((s, x) => s + x.v, 0);
+      const segs = c.segs.map((s) => {
+        const h = (s.v / max) * H;
+        if (h <= 0) return '';
+        y0 -= h;
+        return `<rect x="${cx - bw / 2}" y="${y0}" width="${bw}" height="${Math.max(0, h - 1.5)}" rx="3" fill="${s.color}" ${dato(s.tip, s.titulo, s.sub ?? '', s.deals)}/>`;
+      }).join('');
+      return `<g style="opacity:${c.tenue ? 0.72 : 1}">
+        <rect x="${cx - paso / 2}" y="${m.t}" width="${paso}" height="${H}" fill="transparent" ${dato(c.tip, c.titulo, c.sub ?? '', c.deals)}/>
+        ${segs}<text x="${cx}" y="${y0 - 7}" text-anchor="middle" style="font-weight:700;fill:var(--tinta)">${fmt(tot)}</text>
+        <text x="${cx}" y="${alto - 8}" text-anchor="middle">${esc(c.etq)}</text></g>`;
+    }).join('')}
+  </svg>`;
+}
+const leyenda = (items) => `<div class="leyenda">${items.map(([c, t]) => `<span><i style="background:${c}"></i>${t}</span>`).join('')}</div>`;
+const fmtN = (v) => String(Math.round(v));
+const fmtUsd = (v) => (v ? usd(v) : '0');
+
+// =====================================================================
+// Diapositivas
+// =====================================================================
+const card = (titulo, sub, opsHtml, cuerpo, pie = '') => `<section class="card"><header><h2>${titulo}</h2><span class="sub">${sub}</span><div class="ops">${opsHtml}</div></header><div class="cuerpo">${cuerpo}</div>${pie}</section>`;
+
+// ---------- 1. Camino al millón (fusiona la franja de ARR firmado y "Pipeline vs meta" de la torre) ----------
+function diapoCamino() {
+  const meta = datos.meta.metaUsd;
+  const firmados = D().filter((d) => d.firmado);
+  const firmado = suma(firmados);
+  const abiertos = D().filter((d) => d.abierto);
+  const falta = Math.max(0, meta - firmado);
+  const dias = datos.meta.diasAlCierre;
+  const pct = Math.round((firmado / meta) * 100);
+  const kpis = `<div class="kpis">
+    <div class="kpi grande"><small>ARR firmado 2026</small><b>${usd(firmado)}</b></div>
+    <div class="avance"><div style="display:flex;justify-content:space-between;align-items:baseline"><b style="font-family:var(--serif);font-size:26px">${pct}%</b><span style="font-size:12.5px;color:var(--tinta-3)">de la meta de ${usd(meta)} al 31-dic</span></div>
+      <div class="riel"><i style="width:0" data-ancho="${Math.min(100, pct)}%"></i></div><div class="marcas"><span>0</span><span>250K</span><span>500K</span><span>750K</span><span>1M</span></div></div>
+    <div class="kpi"><small>Faltan</small><b>${usd(falta)}</b><span>${dias} días · ${usd(falta / Math.max(1, dias / 7))} por semana</span></div>
+    <div class="kpi"><small>Pipeline abierto</small><b>${usd(suma(abiertos))}</b><span>${abiertos.length} deals · ponderado ${usd(suma(abiertos, 'ponderadoUsd'))}</span></div>
+  </div>`;
+  return {
+    html: `<div class="diapo una">${card('Camino al millón', hayFiltro() ? `solo ${esc(textoFiltro())}; la meta sigue siendo la del equipo` : 'ARR firmado contra la meta del equipo',
+      ops('camino.vista', [['firmado', 'Firmado en el tiempo'], ['alcanza', '¿Alcanza lo avanzado?']]) + (op['camino.vista'] === 'alcanza' ? ops('camino.2026', [['todo', 'Todo el pipeline'], ['2026', 'Firma esperada en 2026']]) : ''),
+      `<div style="display:flex;flex-direction:column;height:100%">${kpis}<div class="grafico" style="flex:1;min-height:0" id="g-camino"></div><div id="camino-pie"></div></div>`)}</div>`,
+    pintar(el) {
+      const g = el.querySelector('#g-camino');
+      if (op['camino.vista'] === 'firmado') {
+        g.innerHTML = svgCamino(g.clientWidth, g.clientHeight, firmados, firmado);
+        el.querySelector('#camino-pie').innerHTML = '';
+      } else {
+        const r = svgAlcanza(g.clientWidth, g.clientHeight);
+        g.innerHTML = r.svg; el.querySelector('#camino-pie').innerHTML = r.pie;
+      }
+      requestAnimationFrame(() => el.querySelectorAll('[data-ancho]').forEach((x) => (x.style.width = x.dataset.ancho)));
+    },
+  };
+}
+function svgCamino(ancho, alto, firmados, actual) {
+  const c = datos.camino;
+  const metaUsd = datos.meta.metaUsd;
+  const m = { t: 22, r: 120, b: 28, l: 58 };
+  const W = ancho - m.l - m.r, H = alto - m.t - m.b;
+  const t0 = fechaT(c.desde), t1 = fechaT(c.hasta);
+  const x = (t) => m.l + ((t - t0) / (t1 - t0)) * W;
+  const y = (v) => m.t + H - (v / metaUsd) * H;
+  const hoy = Date.now();
+  const firmas = firmados.filter((d) => d.firmaContrato).sort((a, b) => fechaT(a.firmaContrato) - fechaT(b.firmaContrato));
+  let d = `M${x(t0)},${y(0)}`, acc = 0;
+  const puntos = [];
+  for (const f of firmas) {
+    const t = Math.max(t0, fechaT(f.firmaContrato)); // lo firmado antes del lanzamiento (17-ago) parte en el día 0
+    acc += f.arrUsd;
+    d += ` H${x(t)} V${y(acc)}`;
+    puntos.push({ x: x(t), y: y(acc), f, acc });
+  }
+  d += ` H${x(hoy)}`;
+  const ticksY = [0, 250e3, 500e3, 750e3, 1e6];
+  const meses = [];
+  for (let f = new Date(new Date(t0).getFullYear(), new Date(t0).getMonth() + 1, 1); f.getTime() <= t1; f = new Date(f.getFullYear(), f.getMonth() + 1, 1)) meses.push(f);
+  const ritmo = Math.max(0, metaUsd - actual) / Math.max(1, datos.meta.diasAlCierre / 7);
+  return `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="ARR firmado acumulado contra la meta">
+    ${ticksY.map((v) => `<line class="eje" x1="${m.l}" x2="${m.l + W}" y1="${y(v)}" y2="${y(v)}" stroke-dasharray="${v ? '2 4' : ''}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v ? usd(v) : '0'}</text>`).join('')}
+    ${meses.map((f) => `<text x="${x(f.getTime())}" y="${alto - 6}" text-anchor="middle">${MESES[f.getMonth()]}</text>`).join('')}
+    <line x1="${m.l}" x2="${m.l + W}" y1="${y(metaUsd)}" y2="${y(metaUsd)}" stroke="var(--acento)" stroke-width="2"/>
+    <text x="${m.l + W + 8}" y="${y(metaUsd) + 4}" style="font-weight:600;fill:var(--tinta)">Meta ${usd(metaUsd)}</text>
+    <line x1="${x(hoy)}" x2="${x(t1)}" y1="${y(actual)}" y2="${y(metaUsd)}" stroke="var(--tinta-3)" stroke-width="2" stroke-dasharray="6 6"/>
+    <text x="${m.l + W + 8}" y="${y(metaUsd) + 22}">${usd(ritmo)}/semana</text>
+    <text x="${m.l + W + 8}" y="${y(metaUsd) + 38}">de aquí al 31-dic</text>
+    <line x1="${x(hoy)}" x2="${x(hoy)}" y1="${m.t}" y2="${m.t + H}" stroke="var(--borde)"/>
+    <text x="${x(hoy)}" y="${m.t - 6}" text-anchor="middle" style="fill:var(--tinta-3)">hoy</text>
+    <path d="${d}" fill="none" stroke="var(--acento)" stroke-width="3.5" stroke-linejoin="round" pathLength="1" style="stroke-dasharray:1;stroke-dashoffset:1;animation:dibuja 1.4s ease forwards"/>
+    ${puntos.map((p) => `<circle cx="${p.x}" cy="${p.y}" r="7" fill="var(--acento)" ${dato(`<b>${esc(p.f.cuenta)}</b><br>${usd(p.f.arrUsd)} · firmado ${fecha(p.f.firmaContrato)}<br>Acumulado: ${usd(p.acc)}<small>Doble clic para ver el deal</small>`, p.f.cuenta, 'Contrato firmado', [p.f])}/><text x="${p.x - 10}" y="${p.y - 10}" text-anchor="end" style="font-weight:600;fill:var(--tinta)">${esc(p.f.cuenta)}</text>`).join('')}
+    <text x="${x(hoy) + 8}" y="${y(actual) + 4}" style="font-weight:700;fill:var(--tinta)">${usd(actual)}</text>
+    <style>@keyframes dibuja{to{stroke-dashoffset:0}}</style>
+  </svg>`;
+}
+// ¿Alcanza lo avanzado? Firmado más cada etapa, de la más avanzada a la más temprana, contra la meta. Bruto y ponderado.
+function svgAlcanza(ancho, alto) {
+  const meta = datos.meta.metaUsd;
+  const solo2026 = op['camino.2026'] === '2026';
+  const grupos = [...COLUMNAS].reverse().map((c, i) => {
+    const xs = D().filter((d) => c.etapas.includes(d.etapa) && (c.meta || (d.abierto && (!solo2026 || d.firma2026))));
+    return { t: c.t, xs, bruto: suma(xs), pond: c.meta ? suma(xs) : suma(xs, 'ponderadoUsd'), color: ['var(--verde)', 'var(--olivo-700)', 'var(--olivo-500)', 'var(--olivo-300)', 'var(--olivo-200)', 'var(--tarjeta-2)'][i] };
+  });
+  const filas = [['ARR', 'bruto'], ['Ponderado por probabilidad', 'pond']];
+  const totBruto = grupos.reduce((s, g) => s + g.bruto, 0);
+  const escala = Math.max(meta * 1.25, Math.min(totBruto, meta * 3));
+  const m = { t: 30, r: 20, b: 20, l: 190 };
+  const W = ancho - m.l - m.r;
+  const alto1 = Math.min(70, (alto - m.t - m.b) / 2 - 20);
+  const x = (v) => m.l + Math.min(1, v / escala) * W;
+  let svg = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Firmado y pipeline contra la meta">`;
+  filas.forEach(([nom, k], f) => {
+    const yy = m.t + f * (alto1 + 50);
+    let acc = 0;
+    svg += `<text x="${m.l - 12}" y="${yy + alto1 / 2 + 4}" text-anchor="end" style="font-weight:600;fill:var(--tinta)">${nom}</text>`;
+    for (const g of grupos) {
+      const v = g[k];
+      if (!v) continue;
+      const x0 = x(acc), x1 = x(acc + v);
+      acc += v;
+      if (x1 - x0 > 0.5) svg += `<rect x="${x0}" y="${yy}" width="${Math.max(0, x1 - x0 - 1)}" height="${alto1}" fill="${g.color}" stroke="var(--borde)" stroke-width="${g.t === 'Qualification' ? 1 : 0}" ${dato(`<b>${g.t}</b><br>${nom}: ${usd(v)}<br>${g.xs.length} deals · acumulado ${usd(acc)} (${Math.round((acc / meta) * 100)}% de la meta)<small>Doble clic para ver los deals</small>`, `${g.t} · ${nom}`, 'Deals de esta etapa', g.xs)}/>`;
+      if (x1 - x0 > 60) svg += `<text x="${(x0 + x1) / 2}" y="${yy + alto1 / 2 + 4}" text-anchor="middle" style="font-weight:600;fill:${['Firmado', 'PoC'].includes(g.t) ? '#FCFCFC' : 'var(--carbon)'};pointer-events:none">${g.t}</text>`;
+    }
+    if (acc > escala) svg += `<text x="${m.l + W}" y="${yy - 6}" text-anchor="end" style="fill:var(--tinta-3)">sigue hasta ${usd(acc)} ▶</text>`;
+  });
+  svg += `<line x1="${x(meta)}" x2="${x(meta)}" y1="${m.t - 14}" y2="${m.t + 2 * alto1 + 56}" stroke="var(--estancado)" stroke-width="2" stroke-dasharray="5 4"/>
+    <text x="${x(meta) + 6}" y="${m.t - 4}" style="font-weight:700;fill:var(--estancado)">Meta ${usd(meta)}</text></svg>`;
+  const ac = (n, k = 'bruto') => grupos.slice(0, n).reduce((s, g) => s + g[k], 0);
+  const p = (v) => `${Math.round((v / meta) * 100)}%`;
+  const pie = `<p class="resumen">Firmado + PoC + Negotiation: <b>${usd(ac(3))}</b> (${p(ac(3))} de la meta). Sumando Build consensus: <b>${usd(ac(4))}</b> (${p(ac(4))}). Todo el pipeline ponderado por la probabilidad de su etapa: <b>${usd(ac(6, 'pond'))}</b> (${p(ac(6, 'pond'))}).${solo2026 ? ' Solo deals con firma esperada hasta el 31-dic.' : ''}</p>`;
+  return { svg, pie };
+}
+
+// ---------- 2. Actividad semanal (reemplaza "Esta semana vs la anterior") ----------
+const METRICAS = {
+  nuevos: { t: 'Deals nuevos', deals: (s) => D().filter((d) => enSemana(d.creado, s)) },
+  reuniones: { t: 'Primeras reuniones', deals: (s) => D().filter((d) => enSemana(d.primeraReunion, s)) },
+  avanzaron: { t: 'Avanzaron de etapa', deals: (s) => D().filter((d) => transiciones(d).some((x) => x.t >= s.desde && x.t < s.hasta && ord(x.a) > ord(x.de) && ord(x.de) >= 0)) },
+  perdidos: { t: 'Perdidos', deals: (s) => D().filter((d) => transiciones(d).some((x) => x.t >= s.desde && x.t < s.hasta && x.a === 'Closed lost')) },
+  firmados: { t: 'Firmados', deals: (s) => D().filter((d) => d.firmado && enSemana(d.firmaContrato, s)) },
 };
-modal.addEventListener('click', (e) => { if(e.target === modal) modal.close(); });
-
-function barraEtapa(d) {
-  if (!d.limiteEtapa) return '';
-  const pct = Math.min(100, (d.diasEtapa / d.limiteEtapa) * 100);
-  return `<div style="height:4px; background:var(--superficie-2); border-radius:4px; margin-top:4px; overflow:hidden;"><div style="height:100%; background:${d.diasEtapa > d.limiteEtapa ? 'var(--critico)' : 'var(--azul)'}; width:${pct}%"></div></div>`;
+function diapoActividad() {
+  const met = METRICAS[op['act.metrica']] ?? METRICAS.nuevos;
+  const arr = op['act.medida'] === 'arr';
+  const ss = semanas(8);
+  const cols = ss.map((s) => {
+    const xs = met.deals(s);
+    const t = xs.filter((d) => d.tgp), e = xs.filter((d) => !d.tgp);
+    const v = (ys) => (arr ? suma(ys) : ys.length);
+    const f = arr ? fmtUsd : fmtN;
+    return { xs, etq: s.ult ? 'esta sem.' : s.etq, tenue: s.ult,
+      tip: `<b>${met.t} · ${s.nombre}</b><br>${f(v(xs))}${arr ? '' : ' deals'} · ${usd(suma(xs))}<br>TGP: ${f(v(t))} · Equipo: ${f(v(e))}<small>Doble clic para ver los deals</small>`,
+      titulo: `${met.t} · ${s.nombre}`, deals: xs,
+      segs: [
+        { v: v(e), color: 'var(--equipo)', tip: `<b>Equipo · ${s.nombre}</b><br>${f(v(e))}${arr ? '' : ' deals'}`, titulo: `${met.t} del equipo · ${s.nombre}`, deals: e },
+        { v: v(t), color: 'var(--tgp)', tip: `<b>TGP · ${s.nombre}</b><br>${f(v(t))}${arr ? '' : ' deals'}`, titulo: `${met.t} de TGP · ${s.nombre}`, deals: t },
+      ] };
+  });
+  const val = (c) => c.segs.reduce((s, x) => s + x.v, 0);
+  const [a, b] = [cols.at(-1), cols.at(-2)];
+  const dif = val(a) - val(b);
+  const f = arr ? fmtUsd : fmtN;
+  const prom = cols.slice(0, -1).reduce((s, c) => s + val(c), 0) / (cols.length - 1);
+  return {
+    html: `<div class="diapo una">${card('Actividad semanal', 'semanas de lunes a domingo; la última va en curso',
+      ops('act.metrica', Object.entries(METRICAS).map(([k, x]) => [k, x.t])) + ops('act.medida', [['n', 'Deals'], ['arr', 'ARR']]),
+      '<div class="grafico" id="g-act"></div>',
+      `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px">${leyenda([['var(--equipo)', 'Equipo y otras fuentes'], ['var(--tgp)', 'TGP']])}
+        <p class="resumen" style="margin:0">${met.t} esta semana: <b>${f(val(a))}</b> · semana pasada ${f(val(b))} (${dif === 0 ? 'igual' : `${dif > 0 ? '▲' : '▼'} ${f(Math.abs(dif))}`}) · promedio de las 7 anteriores ${f(prom)}</p></div>`)}</div>`,
+    pintar(el) { const g = el.querySelector('#g-act'); g.innerHTML = svgBarras(g.clientWidth, g.clientHeight, cols, f); },
+  };
 }
 
-function render() {
-  const d = datos;
-  const m = d.meta;
-  $('#actualizado').textContent = `Attio · ${hora(d.actualizado)}`;
+// ---------- 3. Carrera de deals ----------
+function claseMovimiento(d) { const ult = d.movimientos.at(-1); return !ult ? '' : ult.avance ? 'sube' : 'baja'; }
+function estadoDeal(d) {
+  if (d.firmado) return 'firmado';
+  if (claseMovimiento(d) === 'sube') return 'sube';
+  if (d.estancado) return 'estancado';
+  if (d.ritmo === 'espera') return 'espera';
+  return 'normal';
+}
+function textoEstado(d) {
+  const est = estadoDeal(d), ult = d.movimientos.at(-1);
+  if (d.firmado) return 'Firmado';
+  if (est === 'sube') return `Avanzó desde ${COLUMNAS[columnaDe(ult.de)]?.t ?? ult.de}`;
+  if (est === 'estancado') return `Estancado: ${d.motivoRitmo}`;
+  if (est === 'espera') return `En espera: ${d.motivoRitmo}`;
+  return d.motivoRitmo ?? `${d.diasEtapa} días en la etapa`;
+}
+// Tramos de ARR (aprobado por Beto, 20-nov): el alto de la tarjeta es 1 a 4 líneas según el ARR.
+const tramo = (arr) => (arr >= 1e6 ? 4 : arr >= 5e5 ? 3 : arr >= 1e5 ? 2 : 1);
+function diapoKanban() {
+  const deals = D().filter((d) => (d.abierto || d.firmado) && (op['kanban.mov'] === 'todo' || d.movimientos.length || esNuevo(d)));
+  const cols = COLUMNAS.map((c) => ({ ...c, deals: deals.filter((d) => c.etapas.includes(d.etapa)).sort((a, b) => b.arrUsd - a.arrUsd) }));
+  const n = (e) => deals.filter((d) => estadoDeal(d) === e).length;
+  const chips = `<div class="chips"><span><i style="border-color:var(--sube);background:var(--sube-fondo)"></i>Avanzó en 7 días (${n('sube')})</span><span><i style="border-color:var(--estancado);background:var(--estancado-fondo)"></i>Estancado (${n('estancado')})</span><span><i style="border-color:var(--espera);background:var(--espera-fondo)"></i>En espera (${n('espera')})</span><span><i style="border-color:var(--normal-borde);background:var(--tarjeta-2)"></i>Al día (${n('normal')})</span></div>`;
+  return {
+    html: `<div class="diapo una">${card('Carrera de deals', 'alto según ARR: 1 línea bajo USD 100K, 2 hasta 500K, 3 hasta 1M, 4 sobre 1M', chips + ops('kanban.mov', [['todo', 'Todos'], ['mov', 'Solo lo que se movió esta semana']]),
+      `<div class="kanban">${cols.map((c, i) => `<div class="col ${c.meta ? 'meta' : ''}"><div class="cab"><b>${c.t}</b><small>${c.deals.length} deals · ${usd(suma(c.deals))}</small></div><div class="pila" data-col="${i}"></div></div>`).join('')}</div>`)}</div>`,
+    pintar(el) {
+      const pilas = el.querySelectorAll('.pila');
+      const H = pilas[0].clientHeight;
+      const GAP = 3;
+      const U = Math.max(20, Math.min(28, H / 24)); // alto de una línea
+      let k = 0;
+      pilas.forEach((p, i) => {
+        const xs = cols[i].deals;
+        const alto = (d) => tramo(d.arrUsd) * U + (tramo(d.arrUsd) - 1) * 4;
+        let usado = 0, cuantos = 0;
+        const total = xs.reduce((s, d) => s + alto(d) + GAP, 0);
+        if (total <= H) cuantos = xs.length;
+        else for (const d of xs) { if (usado + alto(d) + GAP + U + GAP > H) break; usado += alto(d) + GAP; cuantos++; }
+        const resto = xs.slice(cuantos);
+        const sinArr = resto.filter((d) => !d.arrUsd).length;
+        p.innerHTML = xs.slice(0, cuantos).map((d) => tarjeta(d, alto(d), k++)).join('')
+          + (resto.length ? `<button class="deal resto" style="height:${U}px" ${dato(`<b>${resto.length} deals más en ${cols[i].t}</b><br>${usd(suma(resto))}${sinArr ? ` · ${sinArr} sin ARR en Attio` : ''}<small>Clic para ver la lista</small>`, `${cols[i].t} · los que no caben`, 'Ordenados por ARR', resto)} data-clic>+ ${resto.length} deals · ${usd(suma(resto))}${sinArr ? `<small>· ${sinArr} sin ARR</small>` : ''}</button>` : '');
+      });
+    },
+  };
+}
+function tarjeta(d, h, i) {
+  const est = estadoDeal(d), t = tramo(d.arrUsd);
+  const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrEstimado ? '≈' : ''}${usd(d.arrUsd)} · ${esc(etapaCorta(d.etapa))} · ${d.diasEtapa} d en la etapa<br>${d.owner ? `Owner: ${esc(d.owner)} · ` : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(textoEstado(d))}<small>Clic para ver el detalle</small>`;
+  const l2 = [d.owner ? `<span class="own">${esc(d.owner)}</span>` : '', esc(textoEstado(d)), d.mustWin ? '<span class="tag">MUST-WIN</span>' : '', claseMovimiento(d) === 'baja' ? '<span class="retro">▼ RETROCEDIÓ</span>' : '', esNuevo(d) ? '<span class="tag">NUEVO</span>' : ''].filter(Boolean).join(' · ');
+  return `<button class="deal t${t} est-${est} ${d.firmado ? 'firmado' : ''}" data-deal="${d.id}" data-tip="${esc(tip)}" style="height:${h}px;animation-delay:${Math.min(i * 10, 700)}ms">
+    <span class="l1"><span class="nom">${esc(d.cuenta)}</span><span class="arr">${d.arrEstimado ? '≈' : ''}${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'}</span></span>${t > 1 ? `<span class="l2">${l2}</span>` : ''}</button>`;
+}
 
-  const ownersUnicos = [...new Set(d.deals.map(x => x.owner).filter(Boolean))];
-  const select = $('#filtro-owner');
-  if(select.options.length === 1) {
-    ownersUnicos.forEach(o => select.innerHTML += `<option value="${o}" ${o===ownerActual?'selected':''}>${o}</option>`);
+// ---------- 4. Pipeline por etapa + Demand generation ----------
+function diapoEtapaDemanda() {
+  const deals = D().filter((d) => d.abierto || d.firmado);
+  const filas = COLUMNAS.map((c) => {
+    const xs = deals.filter((d) => c.etapas.includes(d.etapa));
+    const t = xs.filter((d) => d.tgp);
+    return { ...c, xs, arr: suma(xs), n: xs.length, tgp: t, arrTgp: suma(t), est: xs.filter((d) => d.estancado).length };
+  });
+  const max = Math.max(1, ...filas.map((f) => f.arr));
+  const tot = { arr: suma(deals), arrTgp: suma(deals.filter((d) => d.tgp)), n: deals.length, nTgp: deals.filter((d) => d.tgp).length };
+  const funnel = filas.map((f) => `<div class="fn" ${dato(`<b>${f.t}</b><br>${usd(f.arr)} · ${f.n} deals${f.est ? ` · ${f.est} estancados` : ''}<br>TGP: ${usd(f.arrTgp)} · ${f.tgp.length} deals<small>Doble clic para ver los deals</small>`, f.t, 'Deals en esta etapa', f.xs)}><span>${f.t}</span>
+    <div class="riel"><i style="width:${((f.arr - f.arrTgp) / max) * 100}%;background:var(--equipo)"></i><i style="width:${(f.arrTgp / max) * 100}%;background:var(--tgp)"></i></div>
+    <span class="num"><b>${usd(f.arr)}</b> <small>· ${f.n} deals${f.est ? ` · ${f.est} estanc.` : ''}</small></span></div>`).join('');
+  // Demanda: deals nuevos por semana, TGP contra el resto, 10 semanas.
+  const ss = semanas(10);
+  const cols = ss.map((s) => {
+    const xs = D().filter((d) => enSemana(d.creado, s));
+    const t = xs.filter((d) => d.tgp), e = xs.filter((d) => !d.tgp);
+    return { etq: s.ult ? 'esta sem.' : s.etq, tenue: s.ult, tip: `<b>Deals nuevos · ${s.nombre}</b><br>${xs.length} deals · ${usd(suma(xs))}<br>TGP: ${t.length} · Equipo: ${e.length}<small>Doble clic para ver los deals</small>`, titulo: `Deals nuevos · ${s.nombre}`, deals: xs,
+      segs: [{ v: e.length, color: 'var(--equipo)', tip: `<b>Equipo · ${s.nombre}</b><br>${e.length} deals`, titulo: `Nuevos del equipo · ${s.nombre}`, deals: e }, { v: t.length, color: 'var(--tgp)', tip: `<b>TGP · ${s.nombre}</b><br>${t.length} deals`, titulo: `Nuevos de TGP · ${s.nombre}`, deals: t }] };
+  });
+  const nT = cols.reduce((s, c) => s + c.segs[1].v, 0), nAll = cols.reduce((s, c) => s + c.segs[0].v + c.segs[1].v, 0);
+  const cuenta = {};
+  for (const d of D()) cuenta[d.fuente] = (cuenta[d.fuente] ?? 0) + 1;
+  const fuentes = Object.keys(cuenta).sort((a, b) => (b === 'TGP') - (a === 'TGP') || cuenta[b] - cuenta[a]);
+  return {
+    html: `<div class="diapo dos">
+      ${card('Pipeline por etapa', 'ARR y deals por etapa, con lo que aporta TGP', '', `<div style="display:grid;align-content:space-evenly;height:100%">${funnel}</div>`,
+        `${leyenda([['var(--equipo)', 'Equipo y otras fuentes'], ['var(--tgp)', 'TGP']])}<p class="resumen">TGP aporta <b>${usd(tot.arrTgp)}</b> de ${usd(tot.arr)} (${tot.arr ? Math.round((tot.arrTgp / tot.arr) * 100) : 0}% del ARR) y <b>${tot.nTgp}</b> de ${tot.n} deals.</p>`)}
+      ${card('Demand generation', 'deals nuevos por semana', '', '<div class="grafico" id="g-dem"></div>',
+        `${leyenda([['var(--equipo)', 'Equipo y otras fuentes'], ['var(--tgp)', 'TGP']])}<p class="resumen">En estas 10 semanas TGP generó <b>${nT}</b> de ${nAll} deals nuevos (${nAll ? Math.round((nT / nAll) * 100) : 0}%). Por fuente, todo el historial:</p>
+        <div class="fuentes">${fuentes.map((f) => `<button class="pill" data-clic ${dato(`<b>${esc(f)}</b><br>${cuenta[f]} deals<small>Clic para ver la lista</small>`, `Fuente: ${f}`, 'Todos los deals con esta fuente', D().filter((d) => d.fuente === f))}>${esc(f)}<small>${cuenta[f]}</small></button>`).join('')}</div>`)}
+    </div>`,
+    pintar(el) { const g = el.querySelector('#g-dem'); g.innerHTML = svgBarras(g.clientWidth, g.clientHeight, cols, fmtN); },
+  };
+}
+
+// ---------- 5. Evolución del pipeline ----------
+const COLOR_ETAPA = ['var(--olivo-200)', 'var(--olivo-300)', 'var(--olivo-500)', 'var(--olivo-700)', 'var(--verde)', 'var(--carbon)'];
+function gruposEvolucion() {
+  if (op['ev.grupo'] === 'owner') {
+    return [['Tomi', 'var(--verde)'], ['Anto', 'var(--olivo-500)'], ['Beto', 'var(--mineral)'], ['Otros', 'var(--olivo-300)']]
+      .map(([t, color]) => ({ t, color, es: (d) => (['Tomi', 'Anto', 'Beto'].includes(d.owner) ? d.owner : 'Otros') === t }));
   }
-
-  const abiertos = d.cola.filter(deEllos);
-  const higiene = d.higiene.filter(deEllos);
-  const etapasKanban = d.funnel.filter(f => f.etapa !== 'Closed lost' && f.etapa !== 'Churned');
-
-  // Datos para gráfico WoW
-  const maxWoW = Math.max(...d.demandGenWoW.map(x => x.deals), 1);
-  
-  // Datos para Pipeline by ARR vs Meta
-  const des = d.desgloseArr;
-  const pctFirmado = Math.min(100, (des.firmadoUsd / des.metaUsd) * 100);
-  const pctAvanzado = Math.min(100 - pctFirmado, (des.avanzadoUsd / des.metaUsd) * 100);
-  const pctTemprano = Math.min(100 - pctFirmado - pctAvanzado, (des.tempranoUsd / des.metaUsd) * 100);
-
-  $('#app').innerHTML = `
-  <section class="kpis">
-    <div class="kpi">
-      <span class="etq">ARR Firmado 2026</span>
-      <div class="num">${usd(m.arrFirmadoUsd)}</div>
-      <div class="sub">${Math.round(m.avance * 100)}% de la meta de ${usd(m.metaUsd)}</div>
-    </div>
-    <div class="kpi">
-      <span class="etq">Falta para la meta</span>
-      <div class="num">${usd(m.faltaUsd)}</div>
-      <div class="sub">${m.diasAlCierre} días · Ritmo: ${usd(m.ritmoSemanalUsd)}/sem</div>
-    </div>
-    <div class="kpi">
-      <span class="etq">Pipeline Abierto</span>
-      <div class="num">${usd(m.pipelineAbiertoUsd)}</div>
-      <div class="sub">${abiertos.length} deals en juego filtrados</div>
-    </div>
-  </section>
-
-  <!-- Gráficos de Tracción -->
-  <section class="graficos-grid">
-    <div class="panel">
-      <h2>CL - Demand Generation WoW</h2>
-      <p class="muted" style="font-size:12px; margin:0;">Nuevas oportunidades creadas por semana en Chile.</p>
-      <div class="chart-wow">
-        ${d.demandGenWoW.map(s => {
-          const h = (s.deals / maxWoW) * 90;
-          return `
-          <div class="bar-col" title="${s.deals} deals (${usd(s.arrUsd)})">
-            <span class="bar-val">${s.deals}</span>
-            <div class="bar-fill" style="height:${Math.max(6, h)}%;"></div>
-            <span class="bar-lbl">${s.etiqueta}</span>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-
-    <div class="panel">
-      <h2>Pipeline vs. Meta USD 1M</h2>
-      <p class="muted" style="font-size:12px; margin:0;">Volumen actual acumulado frente al objetivo anual.</p>
-      <div class="progreso-meta">
-        <div class="prog-firmado" style="width:${pctFirmado}%;" title="Firmado: ${usd(des.firmadoUsd)}"></div>
-        <div class="prog-avanzado" style="width:${pctAvanzado}%;" title="Avanzado (PoC / Neg.): ${usd(des.avanzadoUsd)}"></div>
-        <div class="prog-temprano" style="width:${pctTemprano}%;" title="Temprano: ${usd(des.tempranoUsd)}"></div>
-      </div>
-      <div class="leyenda-meta">
-        <div class="item-leyenda"><span class="punto-leyenda prog-firmado"></span>Firmado: <strong>${usd(des.firmadoUsd)}</strong></div>
-        <div class="item-leyenda"><span class="punto-leyenda prog-avanzado"></span>Avanzado: <strong>${usd(des.avanzadoUsd)}</strong></div>
-        <div class="item-leyenda"><span class="punto-leyenda prog-temprano"></span>Temprano: <strong>${usd(des.tempranoUsd)}</strong></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>La Carrera hacia el Millón (Pipeline Macro)</h2>
-    <p class="muted" style="font-size:13px; margin-bottom:12px;">Haz clic en cualquier tarjeta para ver detalles y sugerencias. Bordes verdes indican avance esta semana.</p>
-    <div class="kanban-scroll">
-      <div class="kanban-board">
-        ${etapasKanban.map(col => {
-          const dealsEtapa = abiertos.filter(x => x.etapa === col.etapa);
-          const totalUsd = dealsEtapa.reduce((sum, val) => sum + val.arrUsd, 0);
-          return `
-          <div class="kanban-col">
-            <div class="kanban-cabecera">
-              <h3>${esc(etapaCorta(col.etapa))} <span class="muted">(${dealsEtapa.length})</span></h3>
-              <span class="total">${usd(totalUsd)}</span>
-            </div>
-            ${dealsEtapa.map(deal => {
-              const e = estadoNextStep(deal);
-              const movido = deal.movimientos.length > 0 ? 'movido' : '';
-              return `
-              <div class="k-card ${movido}" onclick="abrirDeal('${deal.id}')">
-                <div class="k-top">
-                  <div class="k-nombre">${esc(deal.cuenta)} ${deal.mustWin ? '★' : ''}</div>
-                  <div title="Owner">${deal.owner ? `<div class="avatar">${esc(deal.owner[0])}</div>` : ''}</div>
-                </div>
-                <div class="k-arr">${deal.arrEstimado ? '≈' : ''}${usd(deal.arrUsd)}</div>
-                <div class="k-bot">
-                  <span class="chip ${e.clase}">${e.texto}</span>
-                  <span class="muted" style="font-size:11px">${deal.diasEtapa}d</span>
-                </div>
-                ${barraEtapa(deal)}
-              </div>`
-            }).join('') || '<div class="muted" style="font-size:12px; text-align:center; padding:10px 0;">Vacío</div>'}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>
-  </section>
-
-  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap:24px;">
-    <section class="panel">
-      <h2>Dónde presionar hoy (Cola ordenada)</h2>
-      <p class="muted" style="font-size:12px; margin-bottom:12px;">Ordenado por etapa más avanzada y mayor ticket.</p>
-      <div style="overflow-x:auto;">
-        <table class="tabla">
-          <thead><tr><th>Deal</th><th>Etapa</th><th>ARR</th><th>Estado / Próximo Paso</th></tr></thead>
-          <tbody>
-            ${abiertos.slice(0,15).map(d => {
-              const e = estadoNextStep(d);
-              return `<tr onclick="abrirDeal('${d.id}')">
-                <td><strong>${esc(d.cuenta)}</strong></td>
-                <td>${esc(etapaCorta(d.etapa))}</td>
-                <td>${usd(d.arrUsd)}</td>
-                <td><span class="chip ${e.clase}">${e.texto}</span> <span class="muted" style="font-size:12px">${d.pelota==='Cliente'?'(Esperando Cliente)':''}</span></td>
-              </tr>`;
-            }).join('') || '<tr><td colspan="4" class="muted">Nada pendiente.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>Higiene y Cuellos de botella</h2>
-      <p class="muted" style="font-size:12px; margin-bottom:12px;">Deals que requieren arreglos en Attio o están trabados.</p>
-      <div style="overflow-x:auto;">
-        <table class="tabla">
-          <thead><tr><th>Deal</th><th>Responsable</th><th>Qué falta (Alertas)</th></tr></thead>
-          <tbody>
-            ${higiene.slice(0,10).map(d => `
-              <tr onclick="abrirDeal('${d.id}')">
-                <td><strong>${esc(d.cuenta)}</strong></td>
-                <td>${esc(d.responsable ?? '—')}</td>
-                <td style="color:var(--critico-texto); font-size:12px;">${d.problemas.map(esc).join(' • ')}</td>
-              </tr>
-            `).join('') || '<tr><td colspan="3" class="muted">Pipeline impecable.</td></tr>'}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </div>
-  `;
+  if (op['ev.grupo'] === 'origen') return [{ t: 'Equipo', color: 'var(--equipo)', es: (d) => !d.tgp }, { t: 'TGP', color: 'var(--tgp)', es: (d) => d.tgp }];
+  return COLUMNAS.map((c, j) => ({ t: c.t, color: j === 5 ? 'var(--tinta)' : COLOR_ETAPA[j], es: (d, e) => c.etapas.includes(e) }));
+}
+function diapoEvolucion() {
+  const nSem = Number(op['ev.sem']);
+  const ss = semanas(nSem);
+  const grupos = gruposEvolucion();
+  const medida = op['ev.medida'];
+  const val = (xs) => (medida === 'n' ? xs.length : xs.reduce((s, x) => s + (medida === 'pond' ? x.d.arrUsd * (x.d.firmado && ord(x.e) >= ord('Contract signature') ? 1 : probDe(x.e)) : x.d.arrUsd), 0));
+  const f = medida === 'n' ? fmtN : fmtUsd;
+  const nomMedida = { arr: 'ARR', n: 'deals', pond: 'ARR ponderado' }[medida];
+  const fotos = ss.map((s) => {
+    const corte = Math.min(s.hasta, Date.now());
+    const xs = [];
+    for (const d of D()) { const e = etapaAl(d, corte); if (e && ord(e) >= 0) xs.push({ d, e }); }
+    return { s, xs };
+  });
+  const cols = fotos.map(({ s, xs }) => {
+    const nombre = s.ult ? 'hoy' : `cierre del ${new Date(s.hasta - DIA).getDate()}-${MESES[new Date(s.hasta - DIA).getMonth()]}`;
+    return { etq: s.ult ? 'hoy' : s.etq, tip: `<b>Pipeline al ${nombre}</b><br>${f(val(xs))} (${nomMedida}) · ${xs.length} deals<small>Doble clic para ver los deals</small>`, titulo: `Pipeline al ${nombre}`, deals: xs.map((x) => x.d),
+      segs: grupos.map((g) => { const ys = xs.filter((x) => g.es(x.d, x.e)); return { v: val(ys), color: g.color, tip: `<b>${g.t} · ${nombre}</b><br>${f(val(ys))} (${nomMedida}) · ${ys.length} deals`, titulo: `${g.t} · pipeline al ${nombre}`, deals: ys.map((x) => x.d) }; }) };
+  });
+  const v = (c) => c.segs.reduce((s, x) => s + x.v, 0);
+  const a = cols.at(-1), b = cols[Math.max(0, cols.length - 5)];
+  const d = v(a) - v(b);
+  return {
+    html: `<div class="diapo una">${card('Evolución del pipeline', 'cómo estaba el pipeline al cierre de cada semana (con el historial de etapas de Attio)',
+      ops('ev.medida', [['arr', 'ARR'], ['pond', 'Ponderado'], ['n', 'Deals']]) + ops('ev.grupo', [['etapa', 'Por etapa'], ['owner', 'Por owner'], ['origen', 'Por origen']]) + ops('ev.sem', [['8', '8 semanas'], ['12', '12 semanas']]),
+      '<div class="grafico" id="g-ev"></div>',
+      `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px">${leyenda(grupos.map((g) => [g.color, g.t]))}
+        <p class="resumen" style="margin:0">Hoy: <b>${f(v(a))}</b> · hace 4 semanas: ${f(v(b))} (${d >= 0 ? '▲' : '▼'} ${f(Math.abs(d))})</p></div>
+        <p class="nota">Cada deal cuenta con su ARR de hoy, porque Attio no guarda el ARR de semanas anteriores. Incluye firmados; no incluye Closed lost. Ponderado: ARR por la probabilidad de la etapa en que estaba.</p>`)}</div>`,
+    pintar(el) { const g = el.querySelector('#g-ev'); g.innerHTML = svgBarras(g.clientWidth, g.clientHeight, cols, f); },
+  };
 }
 
-async function cargar() {
+// ---------- 6. Días de permanencia por etapa ----------
+function mediana(xs) { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); }
+function p75(xs) { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.floor(s.length * 0.75))]; }
+function estadias(deals) {
+  const r = {};
+  for (const d of deals) {
+    const h = histDe(d);
+    h.forEach(([e, desde], i) => {
+      if (ord(e) < 0 || e === 'Ready for use 🎉') return;
+      const enCurso = !h[i + 1];
+      if (enCurso && op['perm.curso'] === 'cerradas') return;
+      const fin = enCurso ? Date.now() : fechaT(h[i + 1][1]);
+      (r[e] ??= []).push({ d, dias: Math.max(0, Math.floor((fin - fechaT(desde)) / DIA)), enCurso });
+    });
+  }
+  return r;
+}
+function diapoPermanencia() {
+  const etapas = datos.etapas.filter((e) => e.nombre !== 'Ready for use 🎉');
+  const series = op['perm.comparar'] === 'origen'
+    ? [{ t: 'Equipo', color: 'var(--equipo)', r: estadias(D().filter((d) => !d.tgp)) }, { t: 'TGP', color: 'var(--tgp)', r: estadias(D().filter((d) => d.tgp)) }]
+    : [{ t: 'Todos', color: 'var(--acento)', r: estadias(D()) }];
+  const filas = etapas.map((e) => ({ e, s: series.map((x) => { const xs = x.r[e.nombre] ?? []; const ds = xs.map((y) => y.dias); return { ...x, xs, med: mediana(ds), p75: p75(ds), n: xs.length, curso: xs.filter((y) => y.enCurso).length }; }) }));
+  const max = Math.max(10, ...filas.flatMap((f) => [f.e.limite ?? 0, ...f.s.map((x) => x.p75)])) * 1.08;
+  const peor = filas.filter((f) => f.e.limite && f.s[0].n >= 3).map((f) => ({ f, r: f.s[0].med / f.e.limite })).sort((a, b) => b.r - a.r)[0];
+  return {
+    html: `<div class="diapo una">${card('Días de permanencia por etapa', 'cuántos días se queda un deal en cada etapa: la barra es la mediana, la marca es el p75 y la línea punteada lo esperado',
+      ops('perm.curso', [['todas', 'Incluye las que siguen en curso'], ['cerradas', 'Solo estadías terminadas']]) + ops('perm.comparar', [['no', 'Todos juntos'], ['origen', 'TGP vs equipo']]),
+      '<div class="grafico" id="g-perm"></div>',
+      `<div style="display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;align-items:center;margin-top:8px">${leyenda([...series.map((x) => [x.color, `Mediana ${x.t === 'Todos' ? '' : x.t}`]), ['var(--tinta)', 'p75 (marca)']])}
+        ${peor ? `<p class="resumen" style="margin:0">Más lenta frente a lo esperado: <b>${esc(etapaCorta(peor.f.e.nombre))}</b>, mediana ${peor.f.s[0].med} días contra ${peor.f.e.limite} esperados.</p>` : ''}</div>`)}</div>`,
+    pintar(el) {
+      const g = el.querySelector('#g-perm');
+      const ancho = g.clientWidth, alto = g.clientHeight;
+      const m = { t: 8, r: 230, b: 24, l: 140 };
+      const W = ancho - m.l - m.r, filaH = (alto - m.t - m.b) / filas.length;
+      const x = (v) => m.l + (v / max) * W;
+      const bh = Math.min(22, (filaH - 10) / series.length);
+      const pasoT = [5, 10, 15, 20, 30, 45, 60, 90].find((p) => max / p <= 7) ?? 120;
+      const ticks = Array.from({ length: Math.floor(max / pasoT) + 1 }, (_, i) => i * pasoT);
+      g.innerHTML = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Días por etapa">
+        ${ticks.map((t) => `<line class="eje" x1="${x(t)}" x2="${x(t)}" y1="${m.t}" y2="${alto - m.b}" stroke-dasharray="2 4"/><text x="${x(t)}" y="${alto - 6}" text-anchor="middle">${t} d</text>`).join('')}
+        ${filas.map((f, i) => {
+          const y0 = m.t + i * filaH + (filaH - bh * series.length) / 2;
+          return `<text x="${m.l - 12}" y="${m.t + i * filaH + filaH / 2 + 4}" text-anchor="end" style="font-weight:600;fill:var(--tinta)">${esc(etapaCorta(f.e.nombre))}</text>
+            ${f.e.limite ? `<line x1="${x(f.e.limite)}" x2="${x(f.e.limite)}" y1="${y0 - 4}" y2="${y0 + bh * series.length + 4}" stroke="var(--estancado)" stroke-width="2" stroke-dasharray="4 3"/>` : ''}
+            ${f.s.map((s, j) => {
+              const yy = y0 + j * bh;
+              const tip = `<b>${esc(etapaCorta(f.e.nombre))}${series.length > 1 ? ` · ${s.t}` : ''}</b><br>Mediana ${s.med} días · p75 ${s.p75} días<br>${s.n} estadías (${s.curso} en curso)${f.e.limite ? `<br>Esperado: ${f.e.limite} días` : ''}<small>Doble clic para ver los deals</small>`;
+              return `<rect x="${m.l}" y="${yy}" width="${Math.max(0, x(s.med) - m.l)}" height="${bh - 3}" rx="3" fill="${s.color}" ${dato(tip, `${etapaCorta(f.e.nombre)}${series.length > 1 ? ` · ${s.t}` : ''}`, 'Deals que pasaron por esta etapa', [...new Set(s.xs.map((y) => y.d))])}/>
+                <line x1="${x(s.p75)}" x2="${x(s.p75)}" y1="${yy - 1}" y2="${yy + bh - 2}" stroke="var(--tinta)" stroke-width="3"/>
+                ${j === 0 ? `<text x="${ancho - m.r + 14}" y="${m.t + i * filaH + filaH / 2 + 4}">${f.s.map((z) => `${series.length > 1 ? z.t + ' ' : ''}${z.med} / ${z.p75} d`).join(' · ')} <tspan style="fill:var(--tinta-3)">(n=${f.s.reduce((a, z) => a + z.n, 0)})</tspan></text>` : ''}`;
+            }).join('')}`;
+        }).join('')}
+      </svg>`;
+    },
+  };
+}
+
+// ---------- 7. Pipeline por owner ----------
+function diapoOwners() {
+  const abiertos = D().filter((d) => d.abierto && !FUERA_DE_OWNERS.includes(d.owner));
+  const owners = [...new Set(abiertos.map((d) => d.owner ?? 'Sin owner'))];
+  const filas = owners.map((o) => {
+    const xs = abiertos.filter((d) => (d.owner ?? 'Sin owner') === o);
+    const est = xs.filter((d) => d.estancado);
+    const traba = {};
+    for (const d of est) { const c = COLUMNAS[columnaDe(d.etapa)]?.t ?? d.etapa; traba[c] = (traba[c] ?? 0) + 1; }
+    const dondeTraba = Object.entries(traba).sort((a, b) => b[1] - a[1])[0];
+    const urgente = [...est].sort((a, b) => b.arrUsd - a.arrUsd)[0];
+    const motivos = {};
+    for (const d of est) { const m = (d.motivoRitmo ?? '').replace(/,? ?(escrito )?hace .*| el .*| del .*/, ''); motivos[m] = (motivos[m] ?? 0) + 1; }
+    const motivo = Object.entries(motivos).sort((a, b) => b[1] - a[1])[0];
+    return { o, xs, est, tgp: xs.filter((d) => d.tgp), sinNS: xs.filter((d) => !d.nextStep), venc: xs.filter((d) => d.vencido), av: xs.filter((d) => d.movimientos.some((m) => m.avance)), dondeTraba, urgente, motivo };
+  }).sort((a, b) => suma(b.xs) - suma(a.xs));
+  const celda = (o, xs, titulo, txt, mal = false) => `<td class="num ${mal && xs.length ? 'mal' : ''}" ${dato(`<b>${esc(o)} · ${titulo}</b><br>${xs.length} deals · ${usd(suma(xs))}<small>Doble clic para ver los deals</small>`, `${o} · ${titulo}`, 'Deals abiertos', xs)}>${txt ?? xs.length}</td>`;
+  return {
+    html: `<div class="diapo una">${card('Pipeline por owner', 'cuánto lleva cada uno y dónde se le traban los deals', '',
+      `<div class="tabla-scroll"><table class="t"><thead><tr><th>Owner</th><th class="num">Deals</th><th class="num">ARR abierto</th><th class="num">De TGP</th><th class="num">Avanzaron 7 d</th><th class="num">Estancados</th><th class="num">Sin next step</th><th class="num">Vencidos</th><th>Dónde se traba</th></tr></thead>
+      <tbody>${filas.map((f) => `<tr><td><b>${esc(f.o)}</b></td>${celda(f.o, f.xs, 'abiertos')}${celda(f.o, f.xs, 'ARR abierto', usd(suma(f.xs)))}${celda(f.o, f.tgp, 'de TGP')}${celda(f.o, f.av, 'avanzaron en 7 días')}
+        ${celda(f.o, f.est, 'estancados', `${f.est.length}${f.est.length ? ` <small>· ${usd(suma(f.est))}</small>` : ''}`, true)}${celda(f.o, f.sinNS, 'sin next step', null, true)}${celda(f.o, f.venc, 'next step vencido', null, true)}
+        <td>${f.est.length ? `${esc(f.dondeTraba[0])} (${f.dondeTraba[1]})${f.motivo?.[0] ? ` · <small>sobre todo: ${esc(f.motivo[0].toLowerCase())}</small>` : ''}<br><small>Primero: <span data-deal="${f.urgente.id}" style="cursor:pointer;text-decoration:underline">${esc(f.urgente.cuenta)}</span> (${usd(f.urgente.arrUsd)})</small>` : '<small>Nada estancado</small>'}</td></tr>`).join('')}</tbody></table></div>`,
+      '<p class="nota">Deals abiertos de Chile con los filtros de arriba. Estancado: next step vencido o sin fecha y nada que lo justifique (regla del 9-nov). Doble clic en una cifra para ver sus deals.</p>')}</div>`,
+  };
+}
+
+// ---------- 8. Calidad e impacto de TGP ----------
+function diapoTGP() {
+  const per = op['tgp.periodo'];
+  const desde = per === 'todo' ? 0 : lunes(Date.now()).getTime() - (Number(per) - 1) * 7 * DIA;
+  const base = D({ sinOrigen: true }).filter((d) => fechaT(d.creado) >= desde);
+  const kReu = ord('First meeting held'), kBC = ord('Build consensus');
+  const fila = (t, xs) => {
+    const reu = xs.filter((d) => llego(d, kReu) || d.primeraReunion);
+    const bc = xs.filter((d) => llego(d, kBC));
+    const firm = xs.filter((d) => d.firmado);
+    const perd = xs.filter((d) => d.perdido);
+    const ab = xs.filter((d) => d.abierto);
+    const est = ab.filter((d) => d.estancado);
+    const conArr = xs.filter((d) => d.arrUsd > 0);
+    const aReu = reu.map((d) => { const h = histDe(d).find(([e]) => ord(e) >= kReu); const t1 = h ? fechaT(h[1]) : d.primeraReunion ? fechaT(d.primeraReunion) : null; return t1 ? Math.max(0, Math.round((t1 - fechaT(d.creado)) / DIA)) : null; }).filter((v) => v != null);
+    return { t, xs, reu, bc, firm, perd, ab, est, conArr, sinArr: xs.length - conArr.length, diasReu: mediana(aReu) };
+  };
+  const filas = [fila('TGP', base.filter((d) => d.tgp)), fila('Equipo', base.filter((d) => !d.tgp))];
+  const tot = fila('Total', base);
+  const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+  const cPct = (f, xs, de, titulo) => `<td class="num" ${dato(`<b>${f.t} · ${titulo}</b><br>${xs.length} de ${de.length} (${pct(xs.length, de.length)}%)<small>Doble clic para ver los deals</small>`, `${f.t} · ${titulo}`, 'Deals del período', xs)}><div class="pct"><span><b>${pct(xs.length, de.length)}%</b> <small>${xs.length}/${de.length}</small></span><span class="barra"><i style="width:${pct(xs.length, de.length)}%"></i></span></div></td>`;
+  const cN = (f, xs, titulo, txt) => `<td class="num" ${dato(`<b>${f.t} · ${titulo}</b><br>${xs.length} deals · ${usd(suma(xs))}<small>Doble clic para ver los deals</small>`, `${f.t} · ${titulo}`, 'Deals del período', xs)}>${txt}</td>`;
+  const tr = (f, clase = '') => `<tr class="${clase}"><td><b>${f.t}</b></td>${cN(f, f.xs, 'deals creados', f.xs.length)}${cPct(f, f.reu, f.xs, 'llegaron a 1ª reunión')}${cPct(f, f.bc, f.xs, 'llegaron a Build consensus o más')}
+    ${cN(f, f.firm, 'firmados', `${f.firm.length} <small>· ${usd(suma(f.firm))}</small>`)}${cN(f, f.conArr, 'con ARR', `${usd(f.conArr.length ? suma(f.conArr) / f.conArr.length : 0)} <small>· ${f.sinArr} sin ARR</small>`)}
+    ${cPct(f, f.est, f.ab, 'abiertos estancados')}${cPct(f, f.perd, f.xs, 'perdidos')}<td class="num">${f.diasReu ? `${f.diasReu} d` : '—'}</td></tr>`;
+  const [a, b] = filas;
+  return {
+    html: `<div class="diapo una">${card('Calidad e impacto de TGP', 'deals creados en el período, TGP contra el equipo (aquí no se aplica el filtro de origen)',
+      ops('tgp.periodo', [['4', '4 semanas'], ['8', '8 semanas'], ['12', '12 semanas'], ['todo', 'Todo']]),
+      `<div class="tabla-scroll"><table class="t"><thead><tr><th>Origen</th><th class="num">Deals creados</th><th class="num">Llegó a 1ª reunión</th><th class="num">Llegó a Build consensus</th><th class="num">Firmados</th><th class="num">ARR promedio</th><th class="num">Abiertos estancados</th><th class="num">Perdidos</th><th class="num">Días a 1ª reunión</th></tr></thead>
+      <tbody>${filas.map((f) => tr(f)).join('')}${tr(tot, 'tot')}</tbody></table></div>`,
+      `<p class="resumen">TGP trajo <b>${a.xs.length}</b> de ${tot.xs.length} deals del período (${pct(a.xs.length, tot.xs.length)}%), con <b>${usd(suma(a.xs))}</b> de ARR. Llegan a Build consensus: TGP ${pct(a.bc.length, a.xs.length)}% contra equipo ${pct(b.bc.length, b.xs.length)}%.</p>
+       <p class="nota">"Llegó a" cuenta los que pasaron por esa etapa o una posterior, aunque hoy estén perdidos. Días a 1ª reunión: mediana desde que se creó el deal. ARR promedio solo de los que tienen ARR.</p>`)}</div>`,
+  };
+}
+
+// ---------- 9. Carrera de países ----------
+function diapoPaises() {
+  const todo = op['paises.vista'] === 'todo';
+  return {
+    html: `<div class="diapo una">${card('Carrera de países', 'ARR firmado acumulado de cada país desde su día 0 (no usa los filtros de arriba)',
+      ops('paises.vista', [['anio', 'Primer año'], ['todo', 'Toda la historia']]), '<div class="grafico" id="g-paises"></div>',
+      `<p class="nota">Día 0 de Chile: ${fecha(datos.paises[0].inicio)}, el lanzamiento con la llegada de Tomi. Colombia y Brasil siguen provisorios. Se ajusta en lib/config.js.</p>`)}</div>`,
+    pintar(el) { const g = el.querySelector('#g-paises'); g.innerHTML = svgPaises(g.clientWidth, g.clientHeight, todo); },
+  };
+}
+function svgPaises(ancho, alto, todo) {
+  const ps = datos.paises;
+  const m = { t: 20, r: 200, b: 30, l: 60 };
+  const W = ancho - m.l - m.r, H = alto - m.t - m.b;
+  const diasCl = ps.find((p) => p.nombre === 'Chile')?.diasEnMercado ?? 0;
+  const maxDia = todo ? Math.max(...ps.map((p) => p.diasEnMercado)) : Math.max(365, diasCl * 2);
+  const valorAl = (p, dd) => p.puntos.filter((q) => q.dia <= dd).at(-1)?.acumuladoUsd ?? 0;
+  const finDe = (p) => Math.min(p.diasEnMercado, maxDia);
+  const maxV = Math.max(1e6, ...ps.map((p) => valorAl(p, finDe(p))));
+  const tope = maxV <= 1.5e6 ? Math.ceil(maxV / 5e5) * 5e5 : Math.ceil(maxV / 1e6) * 1e6;
+  const x = (dd) => m.l + (dd / maxDia) * W;
+  const y = (v) => m.t + H - (v / tope) * H;
+  const colores = { Chile: '#C6403A', Colombia: '#E3A21A', Brasil: '#2E9E62', Argentina: '#5B9BE6' };
+  const cl = ps.find((p) => p.nombre === 'Chile');
+  const valorEn = (p, dd) => (dd > p.diasEnMercado ? null : valorAl(p, dd));
+  const etiquetas = ps.map((p) => ({ p, y: y(valorAl(p, finDe(p))) })).sort((a, b) => a.y - b.y);
+  for (let i = 1; i < etiquetas.length; i++) etiquetas[i].y = Math.max(etiquetas[i].y, etiquetas[i - 1].y + 18);
+  const ticksY = Array.from({ length: 5 }, (_, i) => (tope / 4) * i);
+  const pasoX = maxDia > 400 ? 90 : 30;
+  const ticksX = Array.from({ length: Math.floor(maxDia / pasoX) + 1 }, (_, i) => i * pasoX);
+  return `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="ARR firmado acumulado por país desde su día 0">
+    ${ticksY.map((v) => `<line class="eje" x1="${m.l}" x2="${m.l + W}" y1="${y(v)}" y2="${y(v)}" stroke-dasharray="${v ? '2 4' : ''}"/><text x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${v ? usd(v) : '0'}</text>`).join('')}
+    ${ticksX.map((dd) => `<text x="${x(dd)}" y="${alto - 8}" text-anchor="middle">${dd === 0 ? 'día 0' : `mes ${Math.round(dd / 30)}`}</text>`).join('')}
+    <line x1="${m.l}" x2="${m.l + W}" y1="${y(1e6)}" y2="${y(1e6)}" stroke="var(--acento)" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="${m.l + 6}" y="${y(1e6) - 6}" style="fill:var(--acento);font-weight:600">USD 1M</text>
+    ${cl ? `<line x1="${x(cl.diasEnMercado)}" x2="${x(cl.diasEnMercado)}" y1="${m.t}" y2="${m.t + H}" stroke="var(--tinta-3)" stroke-dasharray="3 3"/>
+      <text x="${x(cl.diasEnMercado) + 6}" y="${m.t + 12}" style="font-weight:600;fill:var(--tinta)">Chile hoy: día ${cl.diasEnMercado}</text>
+      ${ps.filter((p) => p.nombre !== 'Chile').map((p, i) => { const v = valorEn(p, cl.diasEnMercado); return `<text x="${x(cl.diasEnMercado) + 6}" y="${m.t + 30 + i * 16}">${p.nombre} al día ${cl.diasEnMercado}: ${v == null ? 'aún no llega' : usd(v)}</text>`; }).join('')}` : ''}
+    ${ps.map((p) => {
+      let d = `M${x(0)},${y(0)}`;
+      const pts = p.puntos.filter((q) => q.dia <= maxDia);
+      for (const q of pts) d += ` H${x(q.dia)} V${y(q.acumuladoUsd)}`;
+      d += ` H${x(finDe(p))}`;
+      return `<path d="${d}" fill="none" stroke="${colores[p.nombre]}" stroke-width="${p.nombre === 'Chile' ? 4 : 2.4}" stroke-linejoin="round"/>
+        ${pts.map((q) => `<circle cx="${x(q.dia)}" cy="${y(q.acumuladoUsd)}" r="6" fill="transparent" ${dato(`<b>${p.nombre} · día ${q.dia}</b><br>Acumulado: ${usd(q.acumuladoUsd)}`)}/>`).join('')}
+        <circle cx="${x(finDe(p))}" cy="${y(valorAl(p, finDe(p)))}" r="${p.nombre === 'Chile' ? 6 : 4}" fill="${colores[p.nombre]}"/>`;
+    }).join('')}
+    ${etiquetas.map(({ p, y: yy }) => `<text x="${x(finDe(p)) + 10}" y="${yy + 4}" style="font-weight:${p.nombre === 'Chile' ? 700 : 600};fill:${colores[p.nombre]}">${p.nombre} ${usd(valorAl(p, finDe(p)))}${finDe(p) < p.diasEnMercado ? ` (día ${maxDia})` : ''}</text>`).join('')}
+  </svg>`;
+}
+
+// ---------- 10. Mapa de Chile: un punto por deal en la dirección real de la institución (investigada el 20-nov) ----------
+let geoChile = null, geoStgo = null;
+async function cargarGeo() {
+  geoChile ??= await fetch('/chile-regiones.json').then((r) => r.json());
+  geoStgo ??= await fetch('/santiago-comunas.json').then((r) => r.json());
+}
+let regionSel = null;
+const COLOR_OWNER = { Tomi: '#2F6FD6', Anto: '#C6403A', Beto: '#E3A21A' };
+const COLOR_ETAPA_MAPA = ['#C9D6C4', '#9FB79A', '#6F9A6A', '#3F7A4A', '#1E5A35', '#0B2E1C'];
+function colorDeal(d) {
+  const modo = op['mapa.color'];
+  if (modo === 'owner') return COLOR_OWNER[d.owner] ?? '#8AA285';
+  if (modo === 'origen') return d.tgp ? '#B08D2E' : '#055A35';
+  if (modo === 'etapa') return d.perdido ? '#8A8A8A' : COLOR_ETAPA_MAPA[Math.max(0, columnaDe(d.etapa))];
+  if (d.perdido) return '#8A8A8A';
+  return { sube: '#1E9E5A', estancado: '#D9473F', espera: '#E3A21A', normal: '#8AA285', firmado: '#055A35' }[estadoDeal(d)];
+}
+function leyendaMapa() {
+  const modo = op['mapa.color'];
+  if (modo === 'owner') return leyenda([...Object.entries(COLOR_OWNER).map(([o, c]) => [c, o]), ['#8AA285', 'Otros']]);
+  if (modo === 'origen') return leyenda([['#055A35', 'Equipo y otras fuentes'], ['#B08D2E', 'TGP']]);
+  if (modo === 'etapa') return leyenda(COLUMNAS.map((c, i) => [COLOR_ETAPA_MAPA[i], c.t]));
+  return leyenda([['#1E9E5A', 'Avanzó en 7 días'], ['#D9473F', 'Estancado'], ['#E3A21A', 'En espera'], ['#8AA285', 'Al día'], ['#055A35', 'Firmado'], ['#8A8A8A', 'Perdido']]);
+}
+function diapoMapa() {
+  const cuales = op['mapa.deals'];
+  const xs = D().filter((d) => (cuales === 'abiertos' ? d.abierto : cuales === 'firmados' ? d.firmado : cuales === 'perdidos' ? d.perdido : true));
+  const conUbic = xs.filter((d) => d.ubic?.lat != null);
+  const sinUbic = xs.filter((d) => d.ubic?.lat == null);
+  const regiones = [...datos.regiones.map((r) => r.nombre)];
+  const filas = regiones.map((n) => {
+    const ys = conUbic.filter((d) => d.ubic.region === n);
+    return { n, ys, arr: suma(ys), pub: ys.filter((d) => d.sector === 'Público').length, tgp: ys.filter((d) => d.tgp).length, nac: ys.filter((d) => d.ubic.alcance === 'nacional').length,
+      avanz: ys.filter((d) => d.abierto && ord(d.etapa) >= ord('Negotiation')).sort((a, b) => b.arrUsd - a.arrUsd), firm: ys.filter((d) => d.firmado) };
+  });
+  const conDatos = filas.filter((x) => x.ys.length).sort((a, b) => b.arr - a.arr || b.ys.length - a.ys.length);
+  const maxArr = Math.max(1, ...conDatos.map((x) => x.arr));
+  const totalArr = suma(xs);
+  const fueraRM = filas.filter((x) => x.n !== 'Metropolitana');
+  const arrFuera = fueraRM.reduce((s, x) => s + x.arr, 0);
+  const sinNada = filas.filter((x) => !x.ys.length).map((x) => x.n);
+  const tipReg = (x) => `<b>${esc(x.n)}</b><br>${x.ys.length} deals · ${usd(x.arr)}<br>Público ${x.pub} · Privado ${x.ys.length - x.pub} · TGP ${x.tgp}${x.nac ? `<br>${x.nac} son redes nacionales (punto en su casa matriz)` : ''}${x.avanz.length ? `<br>De Negotiation en adelante: ${x.avanz.map((d) => esc(d.cuenta)).join(', ')}` : ''}<small>Doble clic para ver los deals</small>`;
+  const tabla = `<div class="tabla-scroll"><table class="t mapa-t"><thead><tr><th>Región</th><th class="num">Deals</th><th class="num">ARR</th><th style="width:20%"></th><th class="num">Púb / Priv</th><th class="num">TGP</th><th>Más avanzados</th></tr></thead><tbody>
+    ${conDatos.map((x) => `<tr data-region="${esc(x.n)}" class="${regionSel === x.n ? 'sel' : ''}" ${dato(tipReg(x), x.n, 'Deals con sede en la región', x.ys)}><td><b>${esc(x.n)}</b></td><td class="num">${x.ys.length}</td><td class="num">${usd(x.arr)}</td>
+      <td><span class="barra-r"><i style="width:${(x.arr / maxArr) * 100}%"></i></span></td><td class="num">${x.pub} / ${x.ys.length - x.pub}</td><td class="num">${x.tgp}</td><td><small>${x.avanz.slice(0, 3).map((d) => esc(d.cuenta)).join(', ') || (x.firm.length ? 'Firmado: ' + x.firm.map((d) => esc(d.cuenta)).join(', ') : '—')}</small></td></tr>`).join('')}
+    ${sinUbic.length ? `<tr ${dato(`<b>Sin ubicación</b><br>${sinUbic.length} deals<small>Doble clic para ver los deals</small>`, 'Sin ubicación', 'Deals sin dirección encontrada', sinUbic)}><td><b>Sin ubicación</b></td><td class="num">${sinUbic.length}</td><td class="num">${usd(suma(sinUbic))}</td><td></td><td></td><td></td><td><small>${sinUbic.slice(0, 3).map((d) => esc(d.cuenta)).join(', ')}</small></td></tr>` : ''}</tbody></table></div>`;
+  return {
+    html: `<div class="diapo una">${card('Mapa de Chile', 'un punto por deal en la dirección de la institución; el tamaño es su ARR',
+      ops('mapa.deals', [['abiertos', 'Abiertos'], ['firmados', 'Firmados'], ['perdidos', 'Perdidos'], ['todos', 'Todos']]) + ops('mapa.color', [['estado', 'Color: estado'], ['etapa', 'Etapa'], ['owner', 'Owner'], ['origen', 'Origen']]),
+      `<div class="mapa"><div class="mapa-izq"><div class="grafico" id="g-mapa"></div>${leyendaMapa()}</div><div class="mapa-der">${tabla}
+        <p class="resumen">${conDatos.length} de 16 regiones con deals. Fuera de la Metropolitana: <b>${usd(arrFuera)}</b> (${totalArr ? Math.round((arrFuera / totalArr) * 100) : 0}% del ARR de lo que ves).${sinNada.length ? ` Sin deals: ${sinNada.join(', ')}.` : ''}</p>
+        <p class="nota">Las redes nacionales (isapres, mutuales, RedSalud, Bupa…) van en su casa matriz con borde punteado. Ubicaciones investigadas el 20-nov en lib/ubicaciones.js. Clic en un punto para ver el deal; doble clic en una fila para la lista; clic en una fila para marcar la región.</p></div></div>`)}</div>`,
+    pintar(el) {
+      const g = el.querySelector('#g-mapa');
+      cargarGeo().then(() => {
+        const ancho = g.clientWidth, alto = g.clientHeight;
+        const rad = (v) => (v * Math.PI) / 180;
+        // Tres vistas: Chile completo, zona central (Coquimbo a Los Lagos) y Gran Santiago.
+        const kChile = (alto - 10) / 38.7;
+        const vChile = { lat0: -17.3, lat1: -56, lon0: -75.8, lon1: -66.8, k: kChile, ox: 4, oy: 5 };
+        const anchoChile = (vChile.lon1 - vChile.lon0) * Math.cos(rad(36)) * kChile;
+        const kCentro = (alto - 10) / 12.9;
+        const vCentro = { lat0: -29.3, lat1: -42.2, lon0: -74.6, lon1: -69.6, k: kCentro, ox: 4 + anchoChile + 22, oy: 5 };
+        const anchoCentro = (vCentro.lon1 - vCentro.lon0) * Math.cos(rad(36)) * kCentro;
+        const x3 = vCentro.ox + anchoCentro + 22, disp = ancho - x3 - 4;
+        const kStgo = Math.min(disp / (0.42 * Math.cos(rad(33.45))), (alto - 10) / 0.36);
+        const vStgo = { lat0: -33.29, lat1: -33.65, lon0: -70.86, lon1: -70.44, k: kStgo, ox: x3, oy: 5, cos: Math.cos(rad(33.45)) };
+        const proj = (v) => { const c = v.cos ?? Math.cos(rad(36)); return [(lon) => v.ox + (lon - v.lon0) * c * v.k, (lat) => v.oy + (v.lat0 - lat) * v.k]; };
+        const caja = (v) => { const [X, Y] = proj(v); return { x: X(v.lon0), y: Y(v.lat0), w: X(v.lon1) - X(v.lon0), h: Y(v.lat1) - Y(v.lat0) }; };
+        const geoPaths = (v, geo, clip, colorear) => {
+          const [X, Y] = proj(v);
+          return Object.entries(geo).map(([n, rings]) => {
+            const d = rings.map((r) => 'M' + r.map(([lo, la]) => `${X(lo).toFixed(1)},${Y(la).toFixed(1)}`).join('L') + 'Z').join('');
+            const sel = colorear && regionSel === n;
+            return `<path d="${d}" ${clip ? `clip-path="url(#${clip})"` : ''} fill="var(--tarjeta-2)" stroke="${sel ? 'var(--estancado)' : 'var(--borde)'}" stroke-width="${sel ? 2.5 : 0.7}"/>`;
+          }).join('');
+        };
+        const maxD = Math.max(1, ...conUbic.map((d) => d.arrUsd));
+        // Puntos: los que comparten dirección se abren en espiral para que se vean todos.
+        const puntos = (v, base, extra, filtroV) => {
+          const [X, Y] = proj(v);
+          const grupos = {};
+          const ys = conUbic.filter(filtroV).sort((a, b) => b.arrUsd - a.arrUsd);
+          return ys.map((d) => {
+            const key = d.ubic.lat.toFixed(3) + ',' + d.ubic.lon.toFixed(3);
+            const i = (grupos[key] = (grupos[key] ?? -1) + 1);
+            const r = d.arrUsd ? base + extra * Math.sqrt(d.arrUsd / maxD) : base * 0.8;
+            const ang = i * 2.4, dist = i ? (base + extra * 0.25) * 1.1 * Math.sqrt(i) : 0;
+            const cx = X(d.ubic.lon) + Math.cos(ang) * dist, cy = Y(d.ubic.lat) + Math.sin(ang) * dist;
+            const tip = `<b>${esc(d.cuenta)}</b><br>${d.arrUsd ? usd(d.arrUsd) : 'sin ARR'} · ${esc(etapaCorta(d.etapa))}${d.perdido ? ' (perdido)' : ''}<br>${d.owner ? esc(d.owner) + ' · ' : ''}${d.tgp ? 'TGP' : 'Equipo'} · ${esc(d.sector)}<br>${esc(d.ubic.direccion ?? '')}${d.ubic.comuna ? ', ' + esc(d.ubic.comuna) : ''}${d.ubic.alcance === 'nacional' ? '<br>Red nacional: punto en la casa matriz' : ''}<small>Clic para ver el detalle</small>`;
+            return `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}" fill="${colorDeal(d)}" fill-opacity="${d.arrUsd ? 0.85 : 0.5}" stroke="${d.ubic.alcance === 'nacional' ? 'var(--tinta)' : '#FCFCFC'}" stroke-width="${d.ubic.alcance === 'nacional' ? 1.4 : 1}" ${d.ubic.alcance === 'nacional' ? 'stroke-dasharray="2 1.5"' : ''} data-deal="${d.id}" data-tip="${esc(tip)}" style="cursor:pointer"/>`;
+          }).join('');
+        };
+        const dentro = (v) => (d) => d.ubic.lat <= v.lat0 && d.ubic.lat >= v.lat1 && d.ubic.lon >= v.lon0 && d.ubic.lon <= v.lon1;
+        const cC = caja(vCentro), cS = caja(vStgo);
+        const [XC, YC] = proj(vChile), [XCe, YCe] = proj(vCentro);
+        // Etiquetas de comunas con deals en el zoom de Santiago.
+        const [XS, YS] = proj(vStgo);
+        const comunas = {};
+        for (const d of conUbic.filter(dentro(vStgo))) if (d.ubic.comuna) (comunas[d.ubic.comuna] ??= []).push(d);
+        const etiquetasComunas = Object.entries(comunas).map(([c, ds]) => {
+          const lat = ds.reduce((s, d) => s + d.ubic.lat, 0) / ds.length, lon = ds.reduce((s, d) => s + d.ubic.lon, 0) / ds.length;
+          return `<text x="${XS(lon)}" y="${YS(lat) - 12 - Math.min(16, ds.length * 2)}" text-anchor="middle" style="font-size:11px;fill:var(--tinta-3);pointer-events:none">${esc(c)}</text>`;
+        }).join('');
+        g.innerHTML = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Mapa de Chile con un punto por deal">
+          <defs><clipPath id="clipC"><rect x="${cC.x}" y="${cC.y}" width="${cC.w}" height="${cC.h}" rx="10"/></clipPath><clipPath id="clipS"><rect x="${cS.x}" y="${cS.y}" width="${cS.w}" height="${cS.h}" rx="10"/></clipPath></defs>
+          ${geoPaths(vChile, geoChile, '', true)}${puntos(vChile, 2.2, 3, () => true)}
+          <rect x="${XC(vCentro.lon0)}" y="${YC(vCentro.lat0)}" width="${XC(vCentro.lon1) - XC(vCentro.lon0)}" height="${YC(vCentro.lat1) - YC(vCentro.lat0)}" fill="none" stroke="var(--tinta-3)" stroke-dasharray="3 2"/>
+          <rect x="${cC.x}" y="${cC.y}" width="${cC.w}" height="${cC.h}" rx="10" fill="var(--fondo)" stroke="var(--borde)"/>
+          ${geoPaths(vCentro, geoChile, 'clipC', true)}<g clip-path="url(#clipC)">${puntos(vCentro, 3, 7, dentro(vCentro))}</g>
+          <rect x="${XCe(vStgo.lon0)}" y="${YCe(vStgo.lat0)}" width="${XCe(vStgo.lon1) - XCe(vStgo.lon0)}" height="${YCe(vStgo.lat1) - YCe(vStgo.lat0)}" fill="none" stroke="var(--tinta-3)" stroke-dasharray="3 2"/>
+          <text x="${cC.x + 10}" y="${cC.y + cC.h - 10}" style="font-size:11px;fill:var(--tinta-3)">Zona central</text>
+          <rect x="${cS.x}" y="${cS.y}" width="${cS.w}" height="${cS.h}" rx="10" fill="var(--fondo)" stroke="var(--borde)"/>
+          ${geoPaths(vStgo, geoStgo, 'clipS', false)}<g clip-path="url(#clipS)">${etiquetasComunas}${puntos(vStgo, 4, 16, dentro(vStgo))}</g>
+          <text x="${cS.x + 10}" y="${cS.y + cS.h - 10}" style="font-size:11px;fill:var(--tinta-3)">Gran Santiago</text>
+        </svg>`;
+      });
+    },
+  };
+}
+
+const DIAPOS = [
+  { t: 'Camino al millón', f: diapoCamino },
+  { t: 'Actividad semanal', f: diapoActividad },
+  { t: 'Carrera de deals', f: diapoKanban },
+  { t: 'Pipeline por etapa y demanda', f: diapoEtapaDemanda },
+  { t: 'Evolución del pipeline', f: diapoEvolucion },
+  { t: 'Días por etapa', f: diapoPermanencia },
+  { t: 'Pipeline por owner', f: diapoOwners },
+  { t: 'Calidad de TGP', f: diapoTGP },
+  { t: 'Carrera de países', f: diapoPaises },
+  { t: 'Mapa de Chile', f: diapoMapa },
+];
+const esMovil = () => matchMedia('(max-width: 820px)').matches;
+
+function pintar() {
+  if (!datos) return;
+  $('#filtros').innerHTML = htmlFiltros();
+  listas.clear(); nLista = 0;
+  actual = ((actual % DIAPOS.length) + DIAPOS.length) % DIAPOS.length;
+  const idx = esMovil() ? DIAPOS.map((_, i) => i) : [actual];
+  const hechas = idx.map((i) => ({ i, ...DIAPOS[i].f() }));
+  $('#diapos').innerHTML = hechas.map((h) => h.html).join('');
+  [...$('#diapos').children].forEach((el, j) => { el.classList.add('activa'); hechas[j].pintar?.(el); });
+  $('#puntos').innerHTML = DIAPOS.map((d, i) => `<button data-ir="${i}" class="${i === actual ? 'on' : ''}" title="${d.t}">${i === actual ? `${i + 1} · ${d.t}` : i + 1}</button>`).join('');
+  history.replaceState(null, '', location.pathname + location.search + '#' + (actual + 1));
+  if ($('#pend').classList.contains('abierto')) pintarPendientes();
+  programar();
+}
+function ir(i) { actual = i; ocultarTip(); pintar(); }
+function programar() {
+  clearTimeout(rotacion);
+  const barra = $('#progreso');
+  barra.style.transition = 'none'; barra.style.width = '0';
+  $('#auto').setAttribute('aria-pressed', auto);
+  $('#auto').textContent = auto ? '⏸ Avanzar solo' : '▶ Avanzar solo';
+  if (!auto || esMovil() || $('#pend').classList.contains('abierto')) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => { barra.style.transition = `width ${ROTACION_MS}ms linear`; barra.style.width = '100%'; }));
+  rotacion = setTimeout(() => ir(actual + 1), ROTACION_MS);
+}
+
+// =====================================================================
+// Pendientes del equipo (desplegable)
+// =====================================================================
+const TABS = [['resumen', 'Resumen'], ['toca', 'Le toca'], ['tareas', 'Tareas en Attio'], ['cliente', 'Esperando al cliente'], ['presionar', 'Dónde presionar'], ['higiene', 'Higiene de Attio']];
+const personas = () => datos.personas.filter((p) => filtro.owner === 'Todos' || p.corto === filtro.owner);
+const dealPasa = (x) => pasa({ ...x, owner: filtro.owner === 'Todos' ? x.owner : filtro.owner });
+function diasVencido(iso) { return iso ? Math.floor((Date.now() - new Date(iso + 'T23:59:59')) / DIA) + 1 : null; }
+function itemsPersona(p) {
+  return [
+    ...p.nosToca.filter(dealPasa).map((x) => ({ t: x.cuenta, id: x.id, dias: x.vencido ? diasVencido(x.fechaNextStep) : 0, sinFecha: !x.fechaNextStep })),
+    ...p.tareas.filter((t) => !t.deal || dealPasa(datos.deals.find((d) => d.id === t.deal.id) ?? {})).map((t) => ({ t: t.deal?.cuenta ?? t.texto, id: t.deal?.id, dias: t.vencida ? diasVencido(t.vence) : 0, sinFecha: !t.vence })),
+  ].sort((a, b) => b.dias - a.dias || a.sinFecha - b.sinFecha);
+}
+const nivel = (x) => (x.dias > 30 ? 'v3' : x.dias > 7 ? 'v2' : x.dias > 0 ? 'v1' : 'ok');
+const cabPersona = (p, sub) => `<div class="cabp">${p.avatar ? `<img src="${p.avatar}" alt="">` : `<span class="ini">${esc(p.corto[0])}</span>`}<div><h3>${esc(p.corto)}</h3><small>${sub}</small></div></div>`;
+function itemDeal(x) {
+  const e = estadoNextStep(x);
+  return `<li data-deal="${x.id}"><span class="lin"><b>${esc(x.cuenta)}</b><span class="fecha ${e.clase === 'critico' ? 'critico' : e.clase === 'serio' ? 'hoy' : ''}">${esc(e.texto)}</span></span><span class="txt">${esc(x.nextStep ?? '')}</span></li>`;
+}
+function pintarPendientes() {
+  const tab = op['pend.tab'];
+  $('#pend-sub').textContent = hayFiltro() ? `con los filtros: ${textoFiltro()}` : 'next steps donde la pelota es nuestra, tareas de Attio y lo que espera al cliente';
+  $('#pend-tabs').innerHTML = ops('pend.tab', TABS);
+  let h = '';
+  if (tab === 'resumen') {
+    h = `<div class="personas">${personas().map((p) => {
+      const items = itemsPersona(p);
+      const venc = items.filter((x) => x.dias > 0).length;
+      const cuenta = (n) => items.filter((x) => nivel(x) === n).length;
+      const tramos = [['ok', 'var(--olivo-500)'], ['v1', 'var(--espera)'], ['v2', 'var(--estancado)'], ['v3', '#8E2A24']];
+      return `<div class="per">${cabPersona(p, `${p.esperandoCliente.filter(dealPasa).length} esperando al cliente`)}
+        <div class="nums"><div><b>${items.length}</b>pendientes</div><div class="${venc ? 'rojo' : ''}"><b>${venc}</b>vencidos</div></div>
+        <div class="barra">${items.length ? tramos.map(([n, c]) => `<span style="width:${(cuenta(n) / items.length) * 100}%;background:${c}"></span>`).join('') : ''}</div>
+        <ul>${items.map((x) => `<li class="${nivel(x)}" ${x.id ? `data-deal="${x.id}"` : ''}><span class="lin"><b>${esc(x.t)}</b><span class="fecha ${x.dias > 0 ? 'critico' : ''}">${x.dias > 0 ? `${x.dias} d vencido` : x.sinFecha ? 'sin fecha' : 'al día'}</span></span></li>`).join('') || '<li><span>Nada pendiente</span></li>'}</ul></div>`;
+    }).join('')}</div>`;
+  } else if (tab === 'toca') {
+    h = `<div class="personas">${personas().map((p) => { const xs = p.nosToca.filter(dealPasa); return `<div class="per">${cabPersona(p, `${xs.length} le tocan`)}<ul>${xs.map(itemDeal).join('') || '<li>Nada pendiente</li>'}</ul></div>`; }).join('')}</div>`;
+  } else if (tab === 'tareas') {
+    h = `<div class="personas">${personas().map((p) => `<div class="per">${cabPersona(p, `${p.tareas.length} tareas`)}<ul>${p.tareas.map((t) => `<li ${t.deal ? `data-deal="${t.deal.id}"` : ''}><span class="lin"><b>${esc(t.deal?.cuenta ?? 'Tarea')}</b><span class="fecha ${t.vencida ? 'critico' : ''}">${t.vence ? fecha(t.vence) : 'Sin fecha'}</span></span><span class="txt">${esc(t.texto)}</span></li>`).join('') || '<li>Sin tareas</li>'}</ul></div>`).join('')}</div>`;
+  } else if (tab === 'cliente') {
+    h = `<div class="personas">${personas().map((p) => { const xs = p.esperandoCliente.filter(dealPasa); return `<div class="per">${cabPersona(p, `${xs.length} esperando`)}<ul>${xs.map((x) => `<li data-deal="${x.id}"><span class="lin"><b>${esc(x.cuenta)}</b><span class="fecha">${x.diasInactivo} d sin noticias</span></span><span class="txt">${esc(x.nextStep ?? '')}</span></li>`).join('') || '<li>Nada</li>'}</ul></div>`; }).join('')}</div>`;
+  } else if (tab === 'presionar') {
+    const xs = datos.cola.filter((d) => pasa(d)).slice(0, 20);
+    h = `<p class="nota" style="margin-top:0">Los 20 primeros: la etapa más avanzada primero y después el ARR más grande.</p><table class="t"><thead><tr><th>Deal</th><th>Etapa</th><th class="num">ARR</th><th>Owner</th><th>Next step</th></tr></thead><tbody>${xs.map((d) => { const e = estadoNextStep(d); return `<tr data-deal="${d.id}" style="cursor:pointer"><td><b>${esc(d.cuenta)}</b></td><td>${esc(etapaCorta(d.etapa))}</td><td class="num">${usd(d.arrUsd)}</td><td>${esc(d.owner ?? '—')}</td><td><span class="fecha ${e.clase === 'critico' ? 'critico' : ''}">${esc(e.texto)}</span>${d.pelota === 'Cliente' ? ' <small>· esperando al cliente</small>' : ''}<br><small>${esc((d.nextStep ?? '').slice(0, 120))}</small></td></tr>`; }).join('')}</tbody></table>`;
+  } else {
+    const xs = datos.higiene.filter((d) => pasa(d));
+    h = `<p class="nota" style="margin-top:0">Deals abiertos a los que les falta algo en Attio (${xs.length}).</p><table class="t"><thead><tr><th>Deal</th><th>Responsable</th><th class="num">ARR</th><th>Qué falta</th></tr></thead><tbody>${xs.map((d) => `<tr data-deal="${d.id}" style="cursor:pointer"><td><b>${esc(d.cuenta)}</b></td><td>${esc(d.responsable ?? '—')}</td><td class="num">${usd(d.arrUsd)}</td><td style="color:var(--estancado)">${d.problemas.map(esc).join(' · ')}</td></tr>`).join('')}</tbody></table>`;
+  }
+  $('#pend-cuerpo').innerHTML = h;
+}
+function abrirPendientes(si = !$('#pend').classList.contains('abierto')) {
+  $('#pend').classList.toggle('abierto', si);
+  $('#pend').setAttribute('aria-hidden', !si);
+  $('#abrir-pend').textContent = si ? 'Pendientes del equipo ▾' : 'Pendientes del equipo ▴';
+  if (si) pintarPendientes();
+  programar();
+}
+
+// =====================================================================
+// Detalle, listas, eventos
+// =====================================================================
+function abrirLista(titulo, sub, xs) {
+  const grupos = {};
+  for (const d of xs) (grupos[d.fuente] ??= []).push(d);
+  const orden = Object.keys(grupos).sort((a, b) => (b === 'TGP') - (a === 'TGP') || grupos[b].length - grupos[a].length);
+  $('#detalle').innerHTML = `<div class="det lista">
+    <div class="cabd"><div><h3>${esc(titulo)}</h3><span style="color:var(--tinta-3)">${esc(sub)}</span></div><button class="cerrar" aria-label="Cerrar">×</button></div>
+    <div><b>${xs.length}</b> deals · ARR ${usd(suma(xs))} · TGP: <b>${grupos.TGP?.length ?? 0}</b> (${usd(suma(grupos.TGP ?? []))})</div>
+    ${orden.map((f) => `<h4><span>${esc(f)}</span><span>${grupos[f].length} · ${usd(suma(grupos[f]))}</span></h4><ul>${grupos[f].sort((a, b) => b.arrUsd - a.arrUsd).map((d) => `<li data-deal="${d.id}"><span>${esc(d.cuenta)}${d.owner ? ` <small>· ${esc(d.owner)}</small>` : ''}</span><small>${esc(etapaCorta(d.etapa))}</small><b>${usd(d.arrUsd)}</b></li>`).join('')}</ul>`).join('') || '<p>Sin deals.</p>'}
+  </div>`;
+  if (!$('#detalle').open) $('#detalle').showModal();
+}
+function abrirDetalle(id) {
+  const d = datos.deals.find((x) => x.id === id);
+  if (!d) return;
+  const e = estadoNextStep(d);
+  $('#detalle').innerHTML = `<div class="det">
+    <div class="cabd"><div><h3>${esc(d.cuenta)}</h3><span style="color:var(--tinta-3)">${esc(d.nombre)}</span></div><button class="cerrar" aria-label="Cerrar">×</button></div>
+    <div class="datos">
+      <div>ARR<b>${d.arrEstimado ? '≈' : ''}${usd(d.arrUsd)}</b></div>
+      <div>Etapa<b>${esc(etapaCorta(d.etapa))}</b></div>
+      <div>Días en la etapa<b>${d.diasEtapa}${d.limiteEtapa ? ` / ${d.limiteEtapa}` : ''}</b></div>
+      <div>Owner<b>${esc(d.owner ?? '—')}</b></div>
+      <div>Responsable next step<b>${esc(d.responsable ?? '—')}</b></div>
+      <div>Sin actividad<b>${d.diasInactivo} días</b></div>
+      <div>Firma esperada<b>${d.firmaEsperada ? fecha(d.firmaEsperada) : '—'}</b></div>
+      <div>Origen<b>${d.tgp ? 'TGP' : esc(d.fuente)}</b></div>
+      <div>Sector<b>${esc(d.sector)}</b></div>
+    </div>
+    <div class="ns">${esc(textoEstado(d))}</div>
+    <div><b>Next step</b> <span class="fecha ${e.clase === 'critico' ? 'critico' : ''}">${esc(e.texto)}</span><div class="ns" style="margin-top:6px;background:var(--tarjeta-2)">${esc(d.nextStep ?? 'Sin next step')}</div></div>
+    ${d.problemas.length ? `<div><b>Para resolver en Attio</b><ul>${d.problemas.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>` : ''}
+    ${d.movimientos.length ? `<div><b>Movimiento esta semana</b><ul>${d.movimientos.map((m) => `<li>${esc(m.de)} → ${esc(m.a)} · ${fecha(m.fecha)}${m.por ? ' · ' + esc(m.por) : ''}</li>`).join('')}</ul></div>` : ''}
+    <a class="boton" href="${d.url}" target="_blank" rel="noopener">Abrir en Attio</a>
+  </div>`;
+  if (!$('#detalle').open) $('#detalle').showModal();
+}
+const abrirListaDe = (k) => { const l = listas.get(k); if (l) abrirLista(l.titulo, l.sub, l.ids.map((id) => datos.deals.find((d) => d.id === id)).filter(Boolean)); };
+
+// Tooltip: cualquier elemento con data-tip.
+const tip = $('#tip');
+function ocultarTip() { tip.classList.remove('on'); }
+document.addEventListener('mouseover', (e) => {
+  const el = e.target.closest?.('[data-tip]');
+  if (!el) return ocultarTip();
+  tip.innerHTML = el.getAttribute('data-tip');
+  tip.classList.add('on');
+});
+document.addEventListener('mousemove', (e) => {
+  if (!tip.classList.contains('on')) return;
+  const r = tip.getBoundingClientRect();
+  let x = e.clientX + 16, y = e.clientY + 16;
+  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 16;
+  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 16;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+document.addEventListener('mouseleave', ocultarTip);
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.cerrar') && e.target.closest('dialog')) return $('#detalle').close();
+  if (e.target.id === 'detalle') return $('#detalle').close();
+  const f = e.target.closest('[data-filtro]');
+  if (f) { filtro[f.dataset.filtro] = f.dataset.v; guardar('vu-filtro', filtro); return pintar(); }
+  const o = e.target.closest('[data-op]');
+  if (o) { op[o.dataset.op] = o.dataset.v; guardar('vu-op', op); return o.dataset.op.startsWith('pend.') ? pintarPendientes() : pintar(); }
+  const rg = e.target.closest('[data-region]');
+  if (rg) { regionSel = regionSel === rg.dataset.region ? null : rg.dataset.region; return pintar(); }
+  const irA = e.target.closest('[data-ir]');
+  if (irA) return ir(Number(irA.dataset.ir));
+  const deal = e.target.closest('[data-deal]');
+  if (deal) { ocultarTip(); return abrirDetalle(deal.dataset.deal); }
+  const cl = e.target.closest('[data-clic][data-lista]');
+  if (cl) { ocultarTip(); return abrirListaDe(cl.dataset.lista); }
+});
+document.addEventListener('dblclick', (e) => {
+  const el = e.target.closest('[data-lista]');
+  if (el && !el.closest('[data-deal]')) { ocultarTip(); getSelection()?.removeAllRanges(); abrirListaDe(el.dataset.lista); }
+});
+document.addEventListener('keydown', (e) => {
+  if ($('#detalle').open) return;
+  if (e.key === 'Escape' && $('#pend').classList.contains('abierto')) return abrirPendientes(false);
+  if (e.target.closest('input, select, textarea')) return;
+  if (e.key === 'ArrowRight') ir(actual + 1);
+  if (e.key === 'ArrowLeft') ir(actual - 1);
+});
+$('#ant').onclick = () => ir(actual - 1);
+$('#sig').onclick = () => ir(actual + 1);
+$('#auto').onclick = () => { auto = !auto; programar(); };
+$('#abrir-pend').onclick = () => abrirPendientes();
+$('#cerrar-pend').onclick = () => abrirPendientes(false);
+const ponerTema = (oscuro) => { document.body.classList.toggle('oscuro', oscuro); guardar('vu-tema', oscuro ? 'oscuro' : 'claro'); };
+$('#tema').onclick = () => { ponerTema(!document.body.classList.contains('oscuro')); pintar(); };
+$('#completa').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {}));
+
+// ---------- Celebración cuando aparece un deal firmado nuevo ----------
+function revisarFirmas() {
+  const ids = datos.meta.firmados.map((f) => f.id);
+  let vistos = null;
+  try { vistos = JSON.parse(localStorage.getItem('tv-firmados') ?? 'null'); } catch {}
+  try { localStorage.setItem('tv-firmados', JSON.stringify(ids)); } catch {}
+  const nuevo = vistos ? datos.meta.firmados.find((f) => !vistos.includes(f.id)) : null;
+  if (nuevo) celebrar(nuevo);
+}
+function celebrar(f) {
+  $('#fiesta-cuenta').textContent = f.cuenta;
+  $('#fiesta-monto').textContent = usd(f.arrUsd) + ' de ARR';
+  const caja = $('#fiesta');
+  caja.classList.add('on');
+  const c = caja.querySelector('canvas');
+  const ctx = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const colores = ['#F6F5EB', '#9FA782', '#CEEADC', '#BCCCB7', '#FCFCFC'];
+  const piezas = Array.from({ length: 260 }, () => ({ x: Math.random() * c.width, y: -Math.random() * c.height, v: 2 + Math.random() * 5, r: Math.random() * Math.PI, w: 6 + Math.random() * 10, col: colores[Math.floor(Math.random() * colores.length)] }));
+  const fin = Date.now() + 60_000;
+  (function cuadro() {
+    ctx.clearRect(0, 0, c.width, c.height);
+    for (const p of piezas) {
+      p.y += p.v; p.r += 0.08; p.x += Math.sin(p.r) * 1.5;
+      if (p.y > c.height) p.y = -20;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col; ctx.fillRect(-p.w / 2, -p.w / 4, p.w, p.w / 2); ctx.restore();
+    }
+    if (Date.now() < fin && caja.classList.contains('on')) requestAnimationFrame(cuadro); else caja.classList.remove('on');
+  })();
+}
+$('#fiesta').onclick = () => $('#fiesta').classList.remove('on');
+
+// ---------- Carga ----------
+async function cargar(refrescar = false) {
   try {
-    $('#refrescar').disabled = true;
-    datos = await cargarDatos();
-    render();
+    datos = await cargarDatos({ refrescar });
+    ordenEtapa = Object.fromEntries(datos.etapas.map((e, i) => [e.nombre, i]));
+    $('#error').style.display = 'none';
+    $('#actualizado').textContent = `Attio · ${hora(datos.actualizado)}`;
+    pintar();
+    revisarFirmas();
   } catch (e) {
-    $('#app').innerHTML = `<div style="padding:40px; color:var(--critico); text-align:center;">Error: ${e.message}</div>`;
-  } finally {
-    $('#refrescar').disabled = false;
+    $('#error').style.display = 'block';
+    $('#error').textContent = 'No se pudo leer Attio: ' + e.message;
   }
 }
-
-document.addEventListener('click', (ev) => {
-  if (ev.target.id === 'refrescar') cargar();
-});
-$('#filtro-owner').addEventListener('change', (e) => {
-  ownerActual = e.target.value;
-  try { localStorage.setItem('torre-owner', ownerActual); } catch {}
-  render();
-});
-
-cargar();
-setInterval(cargar, 5 * 60 * 1000);
+$('#refrescar').onclick = () => cargar(true);
+let tamano;
+addEventListener('resize', () => { clearTimeout(tamano); tamano = setTimeout(pintar, 200); });
+setInterval(() => cargar(), 5 * 60 * 1000);
+ponerTema(params.has('oscuro') || (!params.has('claro') && guardado('vu-tema', 'claro') === 'oscuro'));
+await cargar();
+if (params.has('celebrar') && datos) celebrar(datos.meta.firmados[0] ?? { cuenta: 'Prueba', arrUsd: 0 });
 </script>
 </body>
 </html>

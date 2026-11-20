@@ -1,4 +1,7 @@
 // Convierte los datos crudos de Attio en lo que muestran la torre de control y la TV.
+import { REGIONES } from './regiones.js';
+import { UBICACIONES } from './ubicaciones.js';
+import { createHash } from 'node:crypto';
 import {
   ATTIO, CLP_POR_USD, DIAS_ESPERA_CLIENTE, DIAS_ESPERA_MAX, DIAS_GRACIA_NEXT_STEP, DIAS_PELOTA_CLIENTE,
   DIAS_PERDIDO_SIN_ACTIVIDAD, DIAS_SIN_ACTIVIDAD, DIAS_SUBIO, ESPERAS, SIN_RESPUESTA, ETAPAS, ETAPAS_CERRADAS, ETAPAS_FIRMADAS,
@@ -101,6 +104,9 @@ export function construirDashboard(raw, ahora = new Date()) {
     // Origen del deal: el campo "Opportunity source" de Attio. TGP también es la lista "CL - Agendadas por TGP" (coinciden 38 de 38 el 9-nov).
     const fuente = titulo(valor(d, 'opportunity_source')) ?? 'Sin fuente';
     const tgp = deTGP.has(id) || fuente === 'TGP';
+    // Sector (rediseño 20-nov): público si el Client segment del deal incluye Government; si no, privado.
+    const segmentos = (d.values?.client_segment ?? []).map(titulo).filter(Boolean);
+    const sector = segmentos.includes('Government') ? 'Público' : 'Privado';
     const arrClp = texto(d, 'arr_local_currency') ?? 0;
     const arrUsd = arrUsdAttio > 0 ? arrUsdAttio : arrClp / CLP_POR_USD;
     const nextStep = texto(d, 'next_step');
@@ -195,6 +201,11 @@ export function construirDashboard(raw, ahora = new Date()) {
       mustWin,
       fuente,
       tgp,
+      sector,
+      segmentos,
+      ubic: UBICACIONES[createHash('sha256').update(nombre.split(' - ')[0].trim()).digest('hex').slice(0, 16)] ?? null,
+      // Historial de etapas [etapa, desde] para calcular en el navegador con los filtros (evolución, permanencia, conversión).
+      hist: hist.map((v) => [titulo(v), v.active_from]),
       problemas,
       firmaContrato,
       movimientos,
@@ -374,6 +385,8 @@ export function construirDashboard(raw, ahora = new Date()) {
     evolucion,
     camino: { desde: PAISES.find((p) => p.attio === ATTIO.pais)?.inicio, hasta: META_FECHA, firmas: acumular(firmados.map((d) => ({ fecha: d.firmaContrato, cuenta: d.cuenta, arrUsd: d.arrUsd }))) },
     paises,
+    regiones: REGIONES,
+    etapas: ETAPAS.map((e) => ({ nombre: e.nombre, prob: e.prob, limite: e.limite })),
     deals,
   };
 }

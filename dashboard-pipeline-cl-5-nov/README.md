@@ -1,6 +1,6 @@
 # Dashboard Pipeline Chile
 
-Panel (`/panel`, con botón Modo TV) y Torre de control (`/`) del pipeline de Chile. `/tv` redirige a `/panel?tv=1`. Lee Attio por API, solo lectura, cada 5 minutos. Sin dependencias.
+Dashboard del pipeline de Chile en una sola vista (`/`). Lee Attio por API, solo lectura, cada 5 minutos. Sin dependencias.
 
 Definición de vistas y decisiones: `01-definicion-vistas.md`. Reglas (meta, límites por etapa, must-win, equipo): `lib/config.js`.
 
@@ -8,16 +8,18 @@ Definición de vistas y decisiones: `01-definicion-vistas.md`. Reglas (meta, lí
 ```
 ~/.local/node/bin/node dev.mjs
 ```
-Abre http://localhost:3000/panel (Panel), http://localhost:3000 (torre) y http://localhost:3000/panel?tv=1 (TV). Necesita `.env.local` con `ATTIO_API_KEY=...`. Desde el 9-nov el Panel y la Torre no piden clave (`/api/data` ya no lee `DASHBOARD_PASSWORD`); `/jaime` conserva `JAIME_PASSWORD`.
+Abre http://localhost:3000. Necesita `.env.local` con `ATTIO_API_KEY=...`. Desde el 9-nov el dashboard no pide clave (`/api/data` ya no lee `DASHBOARD_PASSWORD`); `/jaime` conserva `JAIME_PASSWORD`.
 
-## Panel y modo TV
-- Panel: meta, esta semana vs la anterior, camino al millón, carrera de deals (kanban filtrable por owner, mes de firma y etapa; clic en un deal abre su detalle), pipeline por etapa, demand generation semanal, carrera de países y lo que le toca a cada uno.
-- Modo TV (botón o `?tv=1`): fondo oscuro, rota carrera de deals, camino + semana, pipeline + demanda y lo de cada persona en páginas de 9. Flechas ← → cambian de pantalla, Esc vuelve al Panel.
-- Cuando aparece un deal nuevo firmado, celebra 60 s. Probar: `/panel?tv=1&celebrar=1`.
-- Vista de Jaime Mañalich (`/jaime`, clave propia en `JAIME_PASSWORD`): lista simple de Primera reunión en adelante, solo institución, ARR y color. Verde: firmado o subió de etapa en 14 días. Rojo: más de 20 días en la misma etapa. Blanco: el resto. Reglas en `lib/jaime.js`. El link viejo `/panel?jaime=1` redirige ahí.
-- Carrera de países: Chile parte el 17-ago-2026 (lanzamiento con Tomi); Colombia y Brasil siguen provisorios (`PAISES` en `lib/config.js`). En el Panel se ven el primer año y toda la historia.
-- 9-nov: Demand generation y Pipeline por etapa muestran lo de TGP (campo "Opportunity source"); las barras, las fuentes y las etapas se tocan para ver la lista de deals.
-- 10-nov: Pipeline por owner (dónde se traba cada uno) y Evolución del pipeline (cómo estaba al cierre de cada una de las últimas 8 semanas, con el historial de etapas).
+## Vista única (rediseño del 20-nov-2026)
+Todo vive en `/` (public/index.html). Panel, Torre de control, modo TV e Iniciativas se fusionaron; `/panel` redirige a `/` y `/tv` abre `/?auto=1&oscuro=1`.
+- Barra fija: filtros Owner (Tomi, Anto, Beto), Origen (TGP o equipo) y Sector (público = Client segment "Government"), que valen para todo. Botón ▶ Avanzar solo (30 s por diapositiva, apagado por defecto), claro/oscuro y pantalla completa.
+- 10 diapositivas, se pasan con ◀ ▶ o el teclado: Camino al millón (con "¿Alcanza lo avanzado?"), Actividad semanal, Carrera de deals (alto por tramos de ARR), Pipeline por etapa + Demand generation, Evolución del pipeline, Días por etapa, Pipeline por owner (sin Esteban), Calidad de TGP, Carrera de países y Mapa de Chile.
+- En todos los gráficos: el dato al pasar el mouse y la lista de deals con doble clic.
+- Pendientes del equipo: desplegable abajo (resumen, le toca, tareas, esperando al cliente, dónde presionar, higiene).
+- Mapa: un punto por deal en la dirección real de la institución (`lib/ubicaciones.js`, investigada el 20-nov; la llave es el SHA-256 del nombre porque el repo es público). Una cuenta nueva sale "Sin ubicación" hasta agregarla.
+- Celebración de contrato firmado: `/?celebrar=1` para probarla.
+- Vista de Jaime Mañalich (`/jaime`, clave propia en `JAIME_PASSWORD`): sin cambios.
+- Carrera de países: Chile parte el 17-ago-2026; Colombia y Brasil siguen provisorios (`PAISES` en `lib/config.js`).
 
 ## Archivos
 - `lib/attio.js`: lectura de Attio (deals de Chile, historial de etapas, listas CL - Pipeline y TGP, tareas del equipo).
