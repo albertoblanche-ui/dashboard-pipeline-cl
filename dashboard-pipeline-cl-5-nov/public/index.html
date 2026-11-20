@@ -13,23 +13,15 @@
   :root {
     --carbon: #1C211C; --verde: #055A35; --mineral: #9FA782; --calcio: #F6F5EB;
     --olivo-100: #ECF1E9; --olivo-200: #D5E0D2; --olivo-300: #BCCCB7; --olivo-500: #8AA285; --olivo-700: #576A55;
-    --fondo: var(--calcio); --tarjeta: #FCFCFC; --tarjeta-2: var(--olivo-100); --borde: var(--olivo-200);
-    --tinta: var(--carbon); --tinta-2: var(--olivo-700); --tinta-3: var(--olivo-500);
+    /* Un solo modo (21-nov): intermedio entre claro y oscuro, fondo gris oliva suave y tarjetas que no encandilan */
+    --fondo: #D8DDD0; --tarjeta: #ECEFE7; --tarjeta-2: #DFE4D8; --borde: #C2C9B8;
+    --tinta: var(--carbon); --tinta-2: #4C5D4A; --tinta-3: #6A7B66;
     --acento: var(--verde); --acento-suave: #CEEADC;
     --equipo: var(--verde); --tgp: var(--mineral);
     --sube: #1E7A4C; --sube-fondo: #DDF1E5; --estancado: #C6403A; --estancado-fondo: #F8E1DF; --espera: #D99A12; --espera-fondo: #FBF0D5;
     --normal-borde: var(--olivo-300);
     --serif: 'IBM Plex Serif', Georgia, serif; --sans: 'IBM Plex Sans', system-ui, sans-serif;
     color-scheme: light;
-  }
-  body.oscuro {
-    --fondo: var(--carbon); --tarjeta: #252B25; --tarjeta-2: #2E352D; --borde: #3A4239;
-    --tinta: #FCFCFC; --tinta-2: rgb(252 252 252 / .74); --tinta-3: rgb(252 252 252 / .5);
-    --acento: var(--mineral); --acento-suave: #34402F;
-    --equipo: #CEEADC; --tgp: #7E8A5E;
-    --sube: #3FB57A; --sube-fondo: #1E5A3A; --estancado: #E0574F; --estancado-fondo: #6E2420; --espera: #F2CF6B; --espera-fondo: #6B5416;
-    --normal-borde: #4A5449;
-    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
@@ -41,14 +33,17 @@
   /* Barra fija arriba: logo, filtros que valen para todo, controles */
   .top { display: flex; align-items: center; gap: 10px 22px; padding: 10px 24px; border-bottom: 1px solid var(--borde); flex-wrap: wrap; background: var(--fondo); }
   .top .logo { height: 22px; display: block; }
-  .logo-o { display: none !important; } body.oscuro .logo-c { display: none !important; } body.oscuro .logo-o { display: block !important; }
   .filtros { display: flex; gap: 8px 18px; flex-wrap: wrap; align-items: center; }
   .grupo { display: flex; align-items: center; gap: 6px; }
   .grupo > span { font-size: 12px; color: var(--tinta-3); text-transform: uppercase; letter-spacing: .05em; }
   .seg { display: inline-flex; background: var(--tarjeta-2); border-radius: 9px; padding: 2px; gap: 2px; }
   .seg button { border: 0; background: transparent; padding: 4px 11px; border-radius: 7px; font-size: 13px; font-weight: 500; color: var(--tinta-2); white-space: nowrap; }
   .seg button[aria-pressed='true'] { background: var(--tarjeta); color: var(--tinta); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .1); }
-  body.oscuro .seg button[aria-pressed='true'] { background: var(--verde); color: #FCFCFC; }
+  /* Filtro u opción que no está en "todo": ámbar, para que se note */
+  .seg.cambiado { background: #F3DFA8; box-shadow: inset 0 0 0 1.5px #D99A12; }
+  .seg.cambiado button[aria-pressed='true'] { background: #D99A12; color: var(--carbon); font-weight: 700; }
+  .btn.reset { background: #FBEFD0; border-color: #D99A12; color: #7A4E00; }
+  .btn.reset:hover { background: #F3DFA8; }
   .top .der { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--tinta-3); font-size: 12.5px; }
   .btn { border: 1px solid var(--borde); background: var(--tarjeta); border-radius: 9px; padding: 6px 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
   .btn:hover { border-color: var(--olivo-500); }
@@ -90,7 +85,6 @@
   .avance { flex: 1; min-width: 220px; display: grid; gap: 6px; padding-bottom: 6px; }
   .avance .riel { height: 14px; background: var(--tarjeta-2); border-radius: 999px; overflow: hidden; }
   .avance .riel i { display: block; height: 100%; background: linear-gradient(90deg, var(--olivo-700), var(--verde)); border-radius: 999px; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
-  body.oscuro .avance .riel i { background: linear-gradient(90deg, var(--olivo-700), var(--mineral), var(--calcio)); }
   .avance .marcas { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--tinta-3); }
 
   /* Kanban: nombre y ARR siempre visibles; el alto va por tramos de ARR */
@@ -99,7 +93,7 @@
   .col .cab { padding: 0 2px 6px; border-bottom: 3px solid var(--olivo-300); margin-bottom: 6px; }
   .col .cab b { font-size: 14px; display: block; }
   .col .cab small { color: var(--tinta-3); font-size: 12px; }
-  .col.meta .cab { border-color: var(--verde); } body.oscuro .col.meta .cab { border-color: var(--mineral); }
+  .col.meta .cab { border-color: var(--verde); }
   .pila { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
   .deal { flex: none; border: 1px solid var(--borde); border-left: 5px solid var(--normal-borde); border-radius: 7px; background: var(--tarjeta-2);
     padding: 0 8px; display: flex; flex-direction: column; justify-content: center; gap: 1px; overflow: hidden; text-align: left; line-height: 1.2; min-width: 0;
@@ -119,8 +113,6 @@
   .deal.est-espera { border-left-color: var(--espera); background: var(--espera-fondo); }
   .deal.firmado { background: var(--verde); border-color: var(--verde); color: #FCFCFC; }
   .deal.firmado .arr, .deal.firmado .l2 { color: rgb(252 252 252 / .85); }
-  body.oscuro .deal.firmado { background: var(--calcio); border-color: var(--calcio); color: var(--carbon); }
-  body.oscuro .deal.firmado .arr, body.oscuro .deal.firmado .l2 { color: var(--olivo-700); }
   .deal .tag { font-size: 10px; font-weight: 700; letter-spacing: .03em; }
   .deal .retro { font-size: 10px; font-weight: 700; color: var(--espera); }
   .deal.resto { border-style: dashed; border-left-width: 1px; background: transparent; align-items: center; flex-direction: row; gap: 6px; font-size: 12px; font-weight: 600; color: var(--tinta-2); justify-content: center; }
@@ -229,7 +221,6 @@
   /* Tooltip, detalle y celebración */
   #tip { position: fixed; z-index: 60; pointer-events: none; background: var(--carbon); color: #FCFCFC; border-radius: 9px; padding: 8px 11px; font-size: 12.5px; line-height: 1.4;
     max-width: 340px; box-shadow: 0 8px 24px rgb(0 0 0 / .25); opacity: 0; transition: opacity .12s; }
-  body.oscuro #tip { background: var(--calcio); color: var(--carbon); }
   #tip.on { opacity: 1; } #tip b { font-weight: 700; } #tip small { opacity: .7; display: block; margin-top: 3px; }
   dialog { border: 0; border-radius: 18px; padding: 0; width: min(580px, calc(100vw - 32px)); max-height: 86vh; background: var(--tarjeta); color: var(--tinta); box-shadow: 0 30px 80px rgb(0 0 0 / .3); }
   dialog::backdrop { background: rgb(28 33 28 / .45); }
@@ -279,13 +270,12 @@
 </head>
 <body>
 <header class="top">
-  <img class="logo logo-c" src="/logo-dark.svg" alt="Telepatía"><img class="logo logo-o" src="/logo-light.svg" alt="Telepatía">
+  <img class="logo" src="/logo-dark.svg" alt="Telepatía">
   <div class="filtros" id="filtros"></div>
   <div class="der">
     <span id="actualizado">Leyendo Attio…</span>
     <button class="btn ic" id="refrescar" title="Volver a leer Attio">↻</button>
     <button class="btn" id="auto" aria-pressed="false" title="Pasa de diapositiva cada 30 segundos">▶ Avanzar solo</button>
-    <button class="btn ic" id="tema" title="Claro u oscuro">◐</button>
     <button class="btn ic" id="completa" title="Pantalla completa">⛶</button>
   </div>
 </header>
@@ -336,17 +326,20 @@ const ord = (e) => ordenEtapa[e] ?? -1;
 const guardado = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } };
 const guardar = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
 const filtro = Object.assign({ owner: 'Todos', origen: 'Todos', sector: 'Todos' }, guardado('vu-filtro', {}));
-const op = Object.assign({
+// Valores por defecto de cada opción: muestran todo (pedido de Beto, 21-nov). Lo que se aleja de esto se marca en ámbar.
+const DEF_OP = {
   'camino.vista': 'firmado', 'camino.2026': 'todo',
   'act.metrica': 'nuevos', 'act.medida': 'n',
   'kanban.mov': 'todo',
   'ev.medida': 'arr', 'ev.grupo': 'etapa', 'ev.sem': '8',
   'perm.curso': 'todas', 'perm.comparar': 'no',
-  'tgp.periodo': '12',
+  'tgp.periodo': 'todo',
   'paises.vista': 'anio',
   'pend.tab': 'resumen',
-  'mapa.deals': 'abiertos', 'mapa.color': 'estado', 'mapa.pintar': 'arr',
-}, guardado('vu-op', {}));
+  'mapa.deals': 'todos', 'mapa.color': 'estado', 'mapa.pintar': 'arr',
+};
+// 'vu-op2': las opciones guardadas antes del 21-nov se descartan, para que todos partan viendo todo.
+const op = Object.assign({}, DEF_OP, guardado('vu-op2', {}));
 let actual = Math.max(0, Number(location.hash.slice(1)) - 1 || 0);
 let auto = params.has('auto');
 let rotacion = null;
@@ -365,13 +358,14 @@ const esNuevo = (d) => Date.now() - new Date(d.creado) < 7 * DIA;
 const fechaT = (f) => new Date(f.length === 10 ? f + 'T12:00:00' : f).getTime();
 
 function htmlFiltros() {
-  const grupo = (k, etq, vals) => `<div class="grupo"><span>${etq}</span><div class="seg">${vals.map(([v, t]) => `<button data-filtro="${k}" data-v="${v}" aria-pressed="${filtro[k] === v}">${t}</button>`).join('')}</div></div>`;
+  const grupo = (k, etq, vals) => `<div class="grupo"><span>${etq}</span><div class="seg ${filtro[k] !== 'Todos' ? 'cambiado' : ''}">${vals.map(([v, t]) => `<button data-filtro="${k}" data-v="${v}" aria-pressed="${filtro[k] === v}">${t}</button>`).join('')}</div></div>`;
   return grupo('owner', 'Owner', [['Todos', 'Todos'], ['Tomi', 'Tomi'], ['Anto', 'Anto'], ['Beto', 'Beto']])
     + grupo('origen', 'Origen', [['Todos', 'Todos'], ['TGP', 'TGP'], ['Equipo', 'Equipo']])
-    + grupo('sector', 'Sector', [['Todos', 'Todos'], ['Público', 'Público'], ['Privado', 'Privado']]);
+    + grupo('sector', 'Sector', [['Todos', 'Todos'], ['Público', 'Público'], ['Privado', 'Privado']])
+    + (hayFiltro() ? `<button class="btn reset" data-limpiar title="Volver a ver todos los deals">✕ Quitar filtros</button>` : '');
 }
 // Botones de opciones de un gráfico.
-const ops = (k, vals) => `<div class="seg">${vals.map(([v, t]) => `<button data-op="${k}" data-v="${v}" aria-pressed="${op[k] === v}">${t}</button>`).join('')}</div>`;
+const ops = (k, vals) => `<div class="seg ${k in DEF_OP && op[k] !== DEF_OP[k] && !k.startsWith('pend.') ? 'cambiado' : ''}" ${k in DEF_OP && op[k] !== DEF_OP[k] && !k.startsWith('pend.') ? 'title="Cambiado: no es la vista por defecto"' : ''}>${vals.map(([v, t]) => `<button data-op="${k}" data-v="${v}" aria-pressed="${op[k] === v}">${t}</button>`).join('')}</div>`;
 
 // ---------- Listas para el doble clic y tooltips ----------
 const listas = new Map();
@@ -1186,7 +1180,15 @@ function pintar() {
   const idx = esMovil() ? DIAPOS.map((_, i) => i) : [actual];
   const hechas = idx.map((i) => ({ i, ...DIAPOS[i].f() }));
   $('#diapos').innerHTML = hechas.map((h) => h.html).join('');
-  [...$('#diapos').children].forEach((el, j) => { el.classList.add('activa'); hechas[j].pintar?.(el); });
+  [...$('#diapos').children].forEach((el, j) => {
+    el.classList.add('activa');
+    // Si alguna opción de la diapositiva no está en su valor por defecto, aparece "Ver todo" para volver.
+    el.querySelectorAll('.card > header .ops').forEach((o) => {
+      const cambiadas = [...new Set([...o.querySelectorAll('[data-op]')].map((b) => b.dataset.op))].filter((k) => k in DEF_OP && op[k] !== DEF_OP[k]);
+      if (cambiadas.length) o.insertAdjacentHTML('afterbegin', `<button class="btn reset" data-reset="${cambiadas.join(',')}" title="Volver a la vista por defecto">↺ Ver todo</button>`);
+    });
+    hechas[j].pintar?.(el);
+  });
   // Todas las diapositivas con su nombre corto: se ve dónde estás y dónde están las demás (pedido de Beto, 21-nov).
   $('#puntos').innerHTML = DIAPOS.map((d, i) => `<button data-ir="${i}" class="${i === actual ? 'on' : ''}" title="${i + 1}. ${d.t}" aria-current="${i === actual}"><span class="n">${i + 1}</span><span class="c">${d.c}</span></button>`).join('');
   history.replaceState(null, '', location.pathname + location.search + '#' + (actual + 1));
@@ -1329,8 +1331,11 @@ document.addEventListener('click', (e) => {
   if (e.target.id === 'detalle') return $('#detalle').close();
   const f = e.target.closest('[data-filtro]');
   if (f) { filtro[f.dataset.filtro] = f.dataset.v; guardar('vu-filtro', filtro); return pintar(); }
+  if (e.target.closest('[data-limpiar]')) { Object.assign(filtro, { owner: 'Todos', origen: 'Todos', sector: 'Todos' }); guardar('vu-filtro', filtro); return pintar(); }
+  const rs = e.target.closest('[data-reset]');
+  if (rs) { for (const k of rs.dataset.reset.split(',')) op[k] = DEF_OP[k]; guardar('vu-op2', op); return pintar(); }
   const o = e.target.closest('[data-op]');
-  if (o) { op[o.dataset.op] = o.dataset.v; guardar('vu-op', op); return o.dataset.op.startsWith('pend.') ? pintarPendientes() : pintar(); }
+  if (o) { op[o.dataset.op] = o.dataset.v; guardar('vu-op2', op); return o.dataset.op.startsWith('pend.') ? pintarPendientes() : pintar(); }
   const rg = e.target.closest('[data-region]');
   if (rg) { regionSel = rg.dataset.region; document.querySelectorAll('tr[data-region]').forEach((t) => t.classList.toggle('sel', t.dataset.region === regionSel)); return irARegionMapa(regionSel); }
   const irA = e.target.closest('[data-ir]');
@@ -1356,8 +1361,6 @@ $('#sig').onclick = () => ir(actual + 1);
 $('#auto').onclick = () => { auto = !auto; programar(); };
 $('#abrir-pend').onclick = () => abrirPendientes();
 $('#cerrar-pend').onclick = () => abrirPendientes(false);
-const ponerTema = (oscuro) => { document.body.classList.toggle('oscuro', oscuro); guardar('vu-tema', oscuro ? 'oscuro' : 'claro'); };
-$('#tema').onclick = () => { ponerTema(!document.body.classList.contains('oscuro')); pintar(); };
 $('#completa').onclick = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {}));
 
 // ---------- Celebración cuando aparece un deal firmado nuevo ----------
@@ -1411,7 +1414,6 @@ let tamano;
 addEventListener('resize', () => { clearTimeout(tamano); tamano = setTimeout(pintar, 200); });
 addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)) - 1; if (n >= 0 && n !== actual && n < DIAPOS.length) ir(n); });
 setInterval(() => cargar(), 5 * 60 * 1000);
-ponerTema(params.has('oscuro') || (!params.has('claro') && guardado('vu-tema', 'claro') === 'oscuro'));
 await cargar();
 if (params.has('celebrar') && datos) celebrar(datos.meta.firmados[0] ?? { cuenta: 'Prueba', arrUsd: 0 });
 </script>
