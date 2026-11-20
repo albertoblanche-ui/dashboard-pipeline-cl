@@ -182,8 +182,9 @@
   #puntos button:hover { border-color: var(--olivo-500); color: var(--tinta); }
   #puntos button.on { background: var(--verde); color: #FCFCFC; font-weight: 700; }
   #puntos button.on .n { background: rgb(252 252 252 / .2); color: #FCFCFC; }
-  @media (max-width: 1500px) { .pie .ayuda { display: none; } #puntos button { padding: 0 8px 0 5px; font-size: 12px; } }
-  @media (max-width: 1250px) { #puntos button:not(.on) .c { display: none; } #puntos button:not(.on) { padding: 0 5px; } }
+  /* Según el ancho efectivo (ya escalado), que calcula escalar() */
+  body.angosto .pie .ayuda { display: none; } body.angosto #puntos button { padding: 0 8px 0 5px; font-size: 12px; }
+  body.muy-angosto #puntos button:not(.on) .c { display: none; } body.muy-angosto #puntos button:not(.on) { padding: 0 5px; }
   #nombre { font-weight: 600; color: var(--tinta-2); }
   .pie .ayuda { margin-left: auto; }
   #progreso { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--acento); width: 0; z-index: 5; }
@@ -247,12 +248,6 @@
   #fiesta .txt small { font-size: 22px; letter-spacing: .1em; text-transform: uppercase; opacity: .8; }
   #fiesta .txt b { font-family: var(--serif); font-size: 90px; line-height: 1; } #fiesta .txt span { font-size: 34px; }
 
-  /* Pantallas grandes (tele): todo un poco más grande */
-  @media (min-width: 1800px) and (min-height: 950px) {
-    body { font-size: 15px; } .card > header h2 { font-size: 25px; } svg text { font-size: 14px; }
-    .deal .l1 { font-size: 14px; } .deal .arr { font-size: 13px; } .deal .l2 { font-size: 12.5px; } .col .cab b { font-size: 16px; }
-    .t td { font-size: 15px; } .fn { font-size: 15px; grid-template-columns: 150px 1fr 240px; }
-  }
   /* Celular y pantallas chicas: las diapositivas van una debajo de la otra, con scroll */
   @media (max-width: 820px) {
     body { overflow: auto; display: block; }
@@ -341,6 +336,23 @@ const COLUMNAS = [
 const columnaDe = (etapa) => COLUMNAS.findIndex((c) => c.etapas.includes(etapa));
 const FUERA_DE_OWNERS = ['Esteban']; // pedido de Beto, 20-nov: Esteban no va en Pipeline por owner
 const params = new URLSearchParams(location.search);
+// Escala proporcional (pedido de Beto, 21-nov: en la TV se desconfiguraba). El dashboard se diseña para 1440×900,
+// el tamaño de un notebook, y en cualquier pantalla más grande o más chica se agranda o achica entero, igual que
+// una diapositiva. Así la TV (1080p o 4K) se ve con las mismas proporciones que el computador. Bajo 1000 px de
+// ancho (celular) no se escala y manda el diseño responsive.
+const BASE_W = 1440, BASE_H = 900;
+let Z = 1;
+function escalar() {
+  const w = innerWidth, h = innerHeight;
+  Z = w < 1000 ? 1 : Math.min(w / BASE_W, h / BASE_H);
+  const b = document.body.style;
+  if (Z === 1) { b.zoom = ''; b.width = ''; b.height = ''; }
+  else { b.zoom = Z; b.width = `${w / Z}px`; b.height = `${h / Z}px`; }
+  const efectivo = w / Z;
+  document.body.classList.toggle('angosto', efectivo < 1650);
+  document.body.classList.toggle('muy-angosto', efectivo < 1250);
+}
+escalar();
 
 
 let datos = null;
@@ -1136,8 +1148,8 @@ function montarMapa(el, ctx) {
   // Rueda: acerca o aleja en torno al mouse.
   svg.addEventListener('wheel', (e) => {
     e.preventDefault();
-    const r = svg.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top, v = vistaMapa;
-    const k = Math.min(kMax, Math.max(kMin, v.k * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.006)));
+    const r = svg.getBoundingClientRect(), mx = (e.clientX - r.left) / Z, my = (e.clientY - r.top) / Z, v = vistaMapa;
+    const k = Math.min(kMax, Math.max(kMin, v.k * Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.004)));
     const gx = v.x + (mx - W / 2) / v.k, gy = v.y + (my - H / 2) / v.k;
     vistaMapa = { x: gx - (mx - W / 2) / k, y: gy - (my - H / 2) / k, k };
     redibujar();
@@ -1147,7 +1159,7 @@ function montarMapa(el, ctx) {
   svg.addEventListener('pointerdown', (e) => { arr = { x: e.clientX, y: e.clientY, v: { ...vistaMapa } }; movio = false; cancelAnimationFrame(anim); });
   addEventListener('pointermove', (e) => {
     if (!arr || !svg.isConnected) return;
-    const dx = e.clientX - arr.x, dy = e.clientY - arr.y;
+    const dx = (e.clientX - arr.x) / Z, dy = (e.clientY - arr.y) / Z;
     if (!movio && Math.hypot(dx, dy) < 4) return;
     if (!movio) svg.setPointerCapture?.(e.pointerId);
     movio = true; cont.classList.add('arrastrando');
@@ -1164,7 +1176,7 @@ function montarMapa(el, ctx) {
   }, true);
   // Minimapa: clic o arrastre para moverse a ese lugar.
   const msvg = mini.querySelector('svg');
-  const centrarEn = (e) => { const r = msvg.getBoundingClientRect(); vistaMapa = { ...vistaMapa, x: mk.x + (e.clientX - r.left - MW / 2) / mk.k, y: mk.y + (e.clientY - r.top - MH / 2) / mk.k }; redibujar(); };
+  const centrarEn = (e) => { const r = msvg.getBoundingClientRect(); vistaMapa = { ...vistaMapa, x: mk.x + ((e.clientX - r.left) / Z - MW / 2) / mk.k, y: mk.y + ((e.clientY - r.top) / Z - MH / 2) / mk.k }; redibujar(); };
   let mArr = false;
   msvg.addEventListener('pointerdown', (e) => { mArr = true; msvg.setPointerCapture?.(e.pointerId); centrarEn(e); });
   msvg.addEventListener('pointermove', (e) => mArr && centrarEn(e));
@@ -1174,7 +1186,7 @@ function montarMapa(el, ctx) {
     if (e.target.closest('[data-deal]')) return;
     e.stopPropagation(); clearTimeout(tClic);
     const r = svg.getBoundingClientRect(), v = vistaMapa;
-    irA({ x: v.x + (e.clientX - r.left - W / 2) / v.k, y: v.y + (e.clientY - r.top - H / 2) / v.k, k: v.k * 2 }, 280);
+    irA({ x: v.x + ((e.clientX - r.left) / Z - W / 2) / v.k, y: v.y + ((e.clientY - r.top) / Z - H / 2) / v.k, k: v.k * 2 }, 280);
   });
   el.querySelectorAll('[data-zona]').forEach((b) => (b.onclick = () => { regionSel = null; irA(ajustar(cajaZona(ZONAS[b.dataset.zona]), W, H)); }));
   el.querySelectorAll('[data-zoom]').forEach((b) => (b.onclick = () => irA({ ...vistaMapa, k: vistaMapa.k * Number(b.dataset.zoom) }, 300)));
@@ -1344,9 +1356,10 @@ document.addEventListener('mouseover', (e) => {
 document.addEventListener('mousemove', (e) => {
   if (!tip.classList.contains('on')) return;
   const r = tip.getBoundingClientRect();
-  let x = e.clientX + 16, y = e.clientY + 16;
-  if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 16;
-  if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 16;
+  const cx = e.clientX / Z, cy = e.clientY / Z, rw = r.width / Z, rh = r.height / Z;
+  let x = cx + 16, y = cy + 16;
+  if (x + rw > innerWidth / Z - 8) x = cx - rw - 16;
+  if (y + rh > innerHeight / Z - 8) y = cy - rh - 16;
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
 });
 document.addEventListener('mouseleave', ocultarTip);
@@ -1404,7 +1417,7 @@ function celebrar(f) {
   caja.classList.add('on');
   const c = caja.querySelector('canvas');
   const ctx = c.getContext('2d');
-  c.width = innerWidth; c.height = innerHeight;
+  c.width = innerWidth / Z; c.height = innerHeight / Z;
   const colores = ['#F6F5EB', '#9FA782', '#CEEADC', '#BCCCB7', '#FCFCFC'];
   const piezas = Array.from({ length: 260 }, () => ({ x: Math.random() * c.width, y: -Math.random() * c.height, v: 2 + Math.random() * 5, r: Math.random() * Math.PI, w: 6 + Math.random() * 10, col: colores[Math.floor(Math.random() * colores.length)] }));
   const fin = Date.now() + 60_000;
@@ -1436,7 +1449,7 @@ async function cargar(refrescar = false) {
 }
 $('#refrescar').onclick = () => cargar(true);
 let tamano;
-addEventListener('resize', () => { clearTimeout(tamano); tamano = setTimeout(pintar, 200); });
+addEventListener('resize', () => { clearTimeout(tamano); tamano = setTimeout(() => { escalar(); pintar(); }, 200); });
 addEventListener('hashchange', () => { const n = Number(location.hash.slice(1)) - 1; if (n >= 0 && n !== actual && n < DIAPOS.length) ir(n); });
 setInterval(() => cargar(), 5 * 60 * 1000);
 await cargar();
