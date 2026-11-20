@@ -184,7 +184,6 @@
   #puntos button.on .n { background: rgb(252 252 252 / .2); color: #FCFCFC; }
   /* Según el ancho efectivo (ya escalado), que calcula escalar() */
   body.angosto .pie .ayuda { display: none; } body.angosto #puntos button { padding: 0 8px 0 5px; font-size: 12px; }
-  body.muy-angosto #puntos button:not(.on) .c { display: none; } body.muy-angosto #puntos button:not(.on) { padding: 0 5px; }
   #nombre { font-weight: 600; color: var(--tinta-2); }
   .pie .ayuda { margin-left: auto; }
   #progreso { position: fixed; left: 0; bottom: 0; height: 3px; background: var(--acento); width: 0; z-index: 5; }
@@ -250,16 +249,17 @@
 
   /* Celular y pantallas chicas: las diapositivas van una debajo de la otra, con scroll */
   @media (max-width: 820px) {
-    body { overflow: auto; display: block; }
-    .top { padding: 10px 14px; } .top .der { margin-left: 0; }
-    main { padding: 10px; }
-    .diapo, .diapo.activa { display: grid; height: auto; animation: none; margin-bottom: 12px; }
-    .diapo.dos { grid-template-columns: 1fr; }
-    .card { min-height: 420px; padding: 14px; }
-    .kanban { grid-template-columns: repeat(6, 160px); overflow-x: auto; height: 640px; }
-    .pie .nav, .pie .ayuda, #auto { display: none; }
-    .fn { grid-template-columns: 90px 1fr 120px; font-size: 12.5px; }
-    .det .datos { grid-template-columns: repeat(2, 1fr); }
+    /* Solo celular: en modo TV (lienzo fijo) no aplica */
+    body:not(.modo-tv) { overflow: auto; display: block; }
+    body:not(.modo-tv) .top { padding: 10px 14px; } body:not(.modo-tv) .top .der { margin-left: 0; }
+    body:not(.modo-tv) main { padding: 10px; }
+    body:not(.modo-tv) .diapo, body:not(.modo-tv) .diapo.activa { display: grid; height: auto; animation: none; margin-bottom: 12px; }
+    body:not(.modo-tv) .diapo.dos { grid-template-columns: 1fr; }
+    body:not(.modo-tv) .card { min-height: 420px; padding: 14px; }
+    body:not(.modo-tv) .kanban { grid-template-columns: repeat(6, 160px); overflow-x: auto; height: 640px; }
+    body:not(.modo-tv) .pie .nav, body:not(.modo-tv) .pie .ayuda, body:not(.modo-tv) #auto { display: none; }
+    body:not(.modo-tv) .fn { grid-template-columns: 90px 1fr 120px; font-size: 12.5px; }
+    body:not(.modo-tv) .det .datos { grid-template-columns: repeat(2, 1fr); }
   }
 
   /* ===== Paleta Bosque (elegida por Beto el 21-nov): negro verdoso, verde neón y blanco, estilo tecnológico ===== */
@@ -292,6 +292,7 @@
   <img class="logo" src="/logo-dark.svg" alt="Telepatía">
   <div class="filtros" id="filtros"></div>
   <div class="der">
+    <span id="version" style="font-size:11px;color:var(--tinta-3);white-space:nowrap"></span>
     <span id="actualizado">Leyendo Attio…</span>
     <button class="btn ic" id="refrescar" title="Volver a leer Attio">↻</button>
     <button class="btn" id="auto" aria-pressed="false" title="Pasa de diapositiva cada 30 segundos">▶ Avanzar solo</button>
@@ -336,30 +337,35 @@ const COLUMNAS = [
 const columnaDe = (etapa) => COLUMNAS.findIndex((c) => c.etapas.includes(etapa));
 const FUERA_DE_OWNERS = ['Esteban']; // pedido de Beto, 20-nov: Esteban no va en Pipeline por owner
 const params = new URLSearchParams(location.search);
-// Escala (pedido de Beto, 21-nov): en el computador se ve tal cual se diseñó, sin escalar (Z = 1).
-// En una TV, que tiene más o menos pantalla que un notebook, todo se agranda o achica entero para que quede
-// con las mismas proporciones que en un notebook típico (BASE_W × BASE_H, el área visible del navegador).
-// Las TV suelen reportar 1920×1080 o más, o 960×540 cuando tienen el doble de densidad de píxeles.
-// ?pantalla muestra el tamaño que reporta la pantalla, para ajustar esto si algún día hace falta.
-const BASE_W = 1470, BASE_H = 830;
-let Z = 1;
+// Modo TV (pedido de Beto, 21-nov: "que se vea exacto como en el computador").
+// En la TV el dashboard se arma en un lienzo fijo del tamaño del área visible del navegador en el MacBook de Beto
+// (1470×830) y se agranda entero hasta llenar la pantalla, con márgenes si la proporción no calza. Así se ve igual
+// que en el computador sin importar el tamaño que reporte el navegador de la TV.
+// Se activa con /tv (o ?tv), en navegadores de Android TV / Google TV, y en pantallas que no son de computador
+// (más anchas que 1700 px, o apaisadas de menos de 1100 px). En el computador no se toca nada.
+// ?pantalla muestra lo que reporta la pantalla.
+const BASE_W = 1470, BASE_H = 830, VERSION = '21-nov-d';
+let Z = 1, OFF_X = 0, OFF_Y = 0, MODO_TV = false;
+const UA_TV = /GoogleTV|Google TV|Android TV|AndroidTV|BRAVIA|SmartTV|SMART-TV|Tizen|Web0S|webOS|CrKey|AFT[A-Z]|\bTV\b|Android(?!.*Mobile)/i.test(navigator.userAgent);
 function escalar() {
   const w = innerWidth, h = innerHeight;
-  const vertical = h > w;
-  const computador = w >= 1100 && w <= 1800;
-  Z = vertical || w < 600 || computador ? 1 : Math.min(w / BASE_W, h / BASE_H);
-  const b = document.body.style;
-  if (Z === 1) { b.zoom = ''; b.width = ''; b.height = ''; }
-  else { b.zoom = Z; b.width = `${w / Z}px`; b.height = `${h / Z}px`; }
-  const efectivo = w / Z;
-  document.body.classList.toggle('angosto', efectivo < 1650);
-  document.body.classList.toggle('muy-angosto', efectivo < 1250);
-  document.body.classList.toggle('escalado', Z !== 1);
-  if (params.has('pantalla')) {
-    let d = document.getElementById('diag');
-    if (!d) { d = document.createElement('div'); d.id = 'diag'; d.style.cssText = 'position:fixed;left:8px;top:56px;z-index:99;background:#22E07A;color:#0A100C;font:600 13px/1.3 monospace;padding:6px 10px;border-radius:8px'; document.body.appendChild(d); }
-    d.textContent = `Pantalla ${w}×${h} · densidad ${devicePixelRatio} · escala ${Z.toFixed(2)}`;
+  const apaisada = w > h;
+  MODO_TV = apaisada && (params.has('tv') || UA_TV || w > 1700 || (w >= 600 && w < 1100));
+  const b = document.body.style, r = document.documentElement.style;
+  if (!MODO_TV) {
+    Z = 1; OFF_X = OFF_Y = 0;
+    Object.assign(b, { width: '', height: '', transform: '', transformOrigin: '', position: '', left: '', top: '' });
+    r.overflow = ''; r.background = '';
+  } else {
+    Z = Math.min(w / BASE_W, h / BASE_H);
+    OFF_X = Math.max(0, (w - BASE_W * Z) / 2); OFF_Y = Math.max(0, (h - BASE_H * Z) / 2);
+    Object.assign(b, { width: `${BASE_W}px`, height: `${BASE_H}px`, transform: `scale(${Z})`, transformOrigin: '0 0', position: 'absolute', left: `${OFF_X}px`, top: `${OFF_Y}px` });
+    r.overflow = 'hidden'; r.background = getComputedStyle(document.body).backgroundColor;
   }
+  document.body.classList.toggle('modo-tv', MODO_TV);
+  document.body.classList.toggle('angosto', (MODO_TV ? BASE_W : w) < 1650);
+  const d = document.getElementById('version');
+  if (d) d.textContent = params.has('pantalla') ? `v${VERSION} · ${w}×${h} · ×${Z.toFixed(2)}${MODO_TV ? ' · TV' : ''}` : '';
 }
 escalar();
 
@@ -1216,7 +1222,7 @@ const DIAPOS = [
   { t: 'Carrera de países', c: 'Países', f: diapoPaises },
   { t: 'Mapa de Chile', c: 'Mapa', f: diapoMapa },
 ];
-const esMovil = () => Z === 1 && matchMedia('(max-width: 820px)').matches;
+const esMovil = () => !MODO_TV && matchMedia('(max-width: 820px)').matches;
 
 function pintar() {
   if (!datos) return;
@@ -1365,10 +1371,10 @@ document.addEventListener('mouseover', (e) => {
 document.addEventListener('mousemove', (e) => {
   if (!tip.classList.contains('on')) return;
   const r = tip.getBoundingClientRect();
-  const cx = e.clientX / Z, cy = e.clientY / Z, rw = r.width / Z, rh = r.height / Z;
+  const cx = (e.clientX - OFF_X) / Z, cy = (e.clientY - OFF_Y) / Z, rw = r.width / Z, rh = r.height / Z;
   let x = cx + 16, y = cy + 16;
-  if (x + rw > innerWidth / Z - 8) x = cx - rw - 16;
-  if (y + rh > innerHeight / Z - 8) y = cy - rh - 16;
+  if (x + rw > (MODO_TV ? BASE_W : innerWidth) - 8) x = cx - rw - 16;
+  if (y + rh > (MODO_TV ? BASE_H : innerHeight) - 8) y = cy - rh - 16;
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
 });
 document.addEventListener('mouseleave', ocultarTip);
@@ -1426,7 +1432,7 @@ function celebrar(f) {
   caja.classList.add('on');
   const c = caja.querySelector('canvas');
   const ctx = c.getContext('2d');
-  c.width = innerWidth / Z; c.height = innerHeight / Z;
+  c.width = MODO_TV ? BASE_W : innerWidth; c.height = MODO_TV ? BASE_H : innerHeight;
   const colores = ['#F6F5EB', '#9FA782', '#CEEADC', '#BCCCB7', '#FCFCFC'];
   const piezas = Array.from({ length: 260 }, () => ({ x: Math.random() * c.width, y: -Math.random() * c.height, v: 2 + Math.random() * 5, r: Math.random() * Math.PI, w: 6 + Math.random() * 10, col: colores[Math.floor(Math.random() * colores.length)] }));
   const fin = Date.now() + 60_000;

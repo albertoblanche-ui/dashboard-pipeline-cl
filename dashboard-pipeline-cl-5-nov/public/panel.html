@@ -7,7 +7,7 @@
 <script>
   const p = new URLSearchParams(location.search);
   if (p.has('jaime')) location.replace('/jaime');
-  else location.replace('/' + (p.has('tv') ? '?auto=1' : '') + (p.has('celebrar') ? (p.has('tv') ? '&' : '?') + 'celebrar=1' : ''));
+  else location.replace('/' + (p.has('tv') ? '?auto=1&tv=1' : '') + (p.has('celebrar') ? (p.has('tv') ? '&' : '?') + 'celebrar=1' : ''));
 </script>
 </head>
 <body style="background:#0A100C"></body>

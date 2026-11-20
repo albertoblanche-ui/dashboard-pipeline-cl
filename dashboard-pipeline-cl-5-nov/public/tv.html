@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <title>Pipeline Chile · TV</title>
 <!-- /tv abre la vista única con el avance automático encendido (rediseño 20-nov-2026). -->
-<script>location.replace('/?auto=1' + (location.search.includes('celebrar') ? '&celebrar=1' : ''));</script>
+<script>const p = new URLSearchParams(location.search); p.set('auto', '1'); p.set('tv', '1'); location.replace('/?' + p.toString().replace(/=(&|$)/g, '$1'));</script>
 </head>
 <body style="background:#0A100C"></body>
 </html>
