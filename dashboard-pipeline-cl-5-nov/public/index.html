@@ -352,7 +352,7 @@ const params = new URLSearchParams(location.search);
 // Se activa con /tv (o ?tv), en navegadores de Android TV / Google TV, y en pantallas que no son de computador
 // (más anchas que 1700 px, o apaisadas de menos de 1100 px). En el computador no se toca nada.
 // ?pantalla muestra lo que reporta la pantalla.
-const BASE_W = 1470, BASE_H = 830, VERSION = '24-nov-b';
+const BASE_W = 1470, BASE_H = 830, VERSION = '24-nov-c';
 let Z = 1, OFF_X = 0, OFF_Y = 0, MODO_TV = false;
 const UA_TV = /GoogleTV|Google TV|Android TV|AndroidTV|BRAVIA|SmartTV|SMART-TV|Tizen|Web0S|webOS|CrKey|AFT[A-Z]|\bTV\b|Android(?!.*Mobile)/i.test(navigator.userAgent);
 function escalar() {
@@ -395,12 +395,14 @@ const DEF_OP = {
   'perm.curso': 'todas', 'perm.comparar': 'no', 'perm.extremos': 'sin',
   'tgp.periodo': 'todo',
   'paises.vista': 'anio',
-  'coh.hito': 'consenso', 'coh.medida': 'pct', 'coh.filas': 'semana', 'coh.ver': 'sector', 'coh.paises': 'no', 'coh.alinear': 'hoy', 'coh.historia': 'anio',
+  // Cohortes. Medida: % de deals o % del ARR (Beto, 24-nov: todo en porcentaje).
+  'coh.hito': 'consenso', 'coh.medida': 'pct', 'coh.filas': 'semana', 'coh.ver': 'sector', 'coh.paises': 'no', 'coh.alinear': 'hoy',
   'pend.tab': 'resumen',
   'mapa.deals': 'todos', 'mapa.color': 'estado', 'mapa.pintar': 'arr',
 };
 // 'vu-op2': las opciones guardadas antes del 21-nov se descartan, para que todos partan viendo todo.
 const op = Object.assign({}, DEF_OP, guardado('vu-op2', {}));
+if (!['pct', 'arr'].includes(op['coh.medida'])) op['coh.medida'] = 'pct'; // 'Deals' en cantidad se sacó el 24-nov
 let actual = Math.max(0, Number(location.hash.slice(1)) - 1 || 0);
 let auto = params.has('auto');
 let rotacion = null;
@@ -982,7 +984,8 @@ function svgPaises(ancho, alto, todo) {
 // Celda rayada = provisional (hay deals que todavía no cumplen esa edad); vacía = ningún deal la cumple.
 // Fuera de los tiempos: deals creados ya en Build consensus o más.
 // Comparación con países (pedido de Beto, 24-nov): lado a lado, "hoy en paralelo" (mismas semanas desde el 17-ago) o
-// "desde su inicio" (cada país desde su primera reunión registrada; Chile desde el lanzamiento). Ahí la cohorte se fecha
+// "homologado" (Beto, 24-nov: día 0 de cada país = el primer día que un deal tuvo su primera reunión, Chile incluido, y se
+// compara la misma cantidad de meses que lleva Chile desde su día 0). Ahí la cohorte se fecha
 // por la entrada del deal: su creación o su primera reunión, la que sea antes (Colombia y Brasil se cargaron en masa a
 // Attio en nov-2025, así que sus fechas de creación anteriores no sirven y su avance por etapa antes de dic-2025 no es confiable).
 const HITOS = {
@@ -1033,7 +1036,9 @@ function perfil(d, ent = false) {
   return (d[clave] = { t0, reu, at: (k) => (k === 1 ? reu : k >= 6 ? firma : llega(k)), avanzado: ord(h[0]?.[0] ?? d.etapa) >= 2 });
 }
 // Avance acumulado (Kaplan-Meier). en(W) da el % que llegó dentro de W días desde su reloj y con cuántos deals se calcula.
-function avance(ds, h, ent = false) {
+// porArr: el mismo cálculo pesando cada deal por su ARR (% del ARR que entró que llegó a la etapa; los deals sin ARR no pesan).
+const porArr = () => op['coh.medida'] === 'arr';
+function avance(ds, h, ent = false, arr = porArr()) {
   const ahora = Date.now(), xs = [];
   let fuera = 0, sinReu = 0, sinReuAbiertos = 0;
   for (const d of ds) {
@@ -1042,14 +1047,15 @@ function avance(ds, h, ent = false) {
     const o = h.reloj === 'creado' ? p.t0 : p.reu;
     if (o == null) { sinReu++; if (!(d.perdido ?? d.etapa === 'Closed lost')) sinReuAbiertos++; continue; }
     const tk = p.at(h.k), fu = Math.floor((ahora - o) / DIA);
-    xs.push(tk != null ? { t: Math.max(0, Math.round((tk - o) / DIA)), ev: true, fu, d } : { t: fu, ev: false, fu, d });
+    const w = arr ? d.arrUsd || 0 : 1;
+    xs.push(tk != null ? { t: Math.max(0, Math.round((tk - o) / DIA)), ev: true, fu, d, w } : { t: fu, ev: false, fu, d, w });
   }
   const tiempos = [...new Set(xs.filter((x) => x.ev).map((x) => x.t))].sort((a, b) => a - b);
   const pasos = [];
   let S = 1;
   for (const t of tiempos) {
-    const riesgo = xs.filter((x) => x.t >= t).length, ev = xs.filter((x) => x.ev && x.t === t).length;
-    S *= 1 - ev / riesgo;
+    const riesgo = xs.filter((x) => x.t >= t).reduce((a, x) => a + x.w, 0), ev = xs.filter((x) => x.ev && x.t === t).reduce((a, x) => a + x.w, 0);
+    if (riesgo > 0) S *= 1 - ev / riesgo;
     pasos.push([t, 1 - S]);
   }
   return {
@@ -1058,8 +1064,10 @@ function avance(ds, h, ent = false) {
       let F = 0;
       for (const [t, f] of pasos) { if (t <= W) F = f; else break; }
       const si = xs.filter((x) => x.ev && x.t <= W).map((x) => x.d);
+      const base = xs.reduce((a, x) => a + x.w, 0);
       return {
-        p: xs.length ? F : null, n: xs.length, num: si.length, si,
+        p: base > 0 ? F : null, n: xs.length, num: si.length, si, arr, nArr: xs.filter((x) => x.d.arrUsd > 0).length,
+        arrBase: xs.reduce((a, x) => a + (x.d.arrUsd || 0), 0), arrSi: si.reduce((a, d) => a + (d.arrUsd || 0), 0),
         obs: xs.filter((x) => x.fu >= W).length, // deals que ya cumplen esa edad
         cens: xs.filter((x) => !x.ev && x.fu < W).length + sinReuAbiertos, // aún no cumplen, o siguen abiertos sin reunión: provisional
         fuera, sinReu, sinReuAbiertos,
@@ -1098,15 +1106,21 @@ function mesesCoh(deals, desde) {
   return ms.map((m, i) => ({ t: m.etq, color: `color-mix(in srgb, var(--acento) ${Math.round(35 + (65 * (i + 1)) / n)}%, var(--tinta-3))`, deals: deals.filter((d) => { const t = perfil(d).t0; return t >= m.desde && t < m.hasta; }) }));
 }
 const pct = (p) => `${Math.round(p * 100)}%`;
+const deQue = () => (porArr() ? 'del ARR' : 'de los deals');
 const desdeQue = (h) => (h.reloj === 'creado' ? 'de creado' : 'de la reunión');
 const comparando = () => op['coh.paises'] !== 'no' && benchEstado === 'listo';
 const paisesSel = () => (op['coh.paises'] === 'todos' ? bench.paises : [op['coh.paises']]);
 const dealsPais = (pais) => bench.deals.filter((d) => d.pais === pais && (filtro.sector === 'Todos' || d.sector === filtro.sector));
-// Inicio de cada país: su primera reunión registrada (pedido de Beto, 24-nov). Chile: el lanzamiento del 17-ago.
+// Día 0 homologado de cada país (Beto, 24-nov): el primer día que un deal tuvo su primera reunión (fecha de primera reunión
+// o paso a First meeting held, lo que sea antes). Igual para todos, Chile incluido.
+const dia0Cache = {};
 function inicioPais(pais) {
-  if (pais === 'Chile') return lanzamiento();
-  const rs = bench.deals.filter((d) => d.pais === pais && d.primeraReunion).map((d) => dia0(d.primeraReunion)).filter((t) => t <= Date.now());
-  return rs.length ? Math.min(...rs) : Math.min(...bench.deals.filter((d) => d.pais === pais).map((d) => dia0(d.creado)));
+  if (dia0Cache[pais]?.de === (pais === 'Chile' ? datos : bench)) return dia0Cache[pais].t;
+  const ds = pais === 'Chile' ? datos.deals : bench.deals.filter((d) => d.pais === pais);
+  const rs = ds.map((d) => perfil(d, true).reu).filter((t) => t != null);
+  const t = rs.length ? Math.min(...rs) : Math.min(...ds.map((d) => dia0(d.creado)));
+  dia0Cache[pais] = { de: pais === 'Chile' ? datos : bench, t };
+  return t;
 }
 
 function diapoCohortes() {
@@ -1122,27 +1136,26 @@ function diapoCohortes() {
   const ult = ms.at(-1), pri = ms[0];
   const prov = (r) => (r.cens ? ` <span title="hay deals que aún no cumplen ${h.ventana} días">(provisional)</span>` : '');
   const titular = (cmp ? 'Chile · ' : '') + (ult && pri && ult !== pri
-    ? `${h.t} a ${h.ventana} días ${desdeQue(h)}: <b>${pct(ult.r.p)}</b> en las cohortes de ${ult.t}${prov(ult.r)} contra <b>${pct(pri.r.p)}</b> en ${pri.t}${prov(pri.r)} (${ult.r.num} de ${ult.r.n} vs ${pri.r.num} de ${pri.r.n} deals).`
+    ? `${h.t} a ${h.ventana} días ${desdeQue(h)}: <b>${pct(ult.r.p)} ${deQue()}</b> en las cohortes de ${ult.t}${prov(ult.r)} contra <b>${pct(pri.r.p)}</b> en ${pri.t}${prov(pri.r)} (${ult.r.num} de ${ult.r.n} vs ${pri.r.num} de ${pri.r.n} deals).`
     : `Todavía no hay dos meses con 8 o más deals que cumplan ${h.ventana} días ${desdeQue(h)} para comparar ${h.t.toLowerCase()}.`);
   const estadoPaises = op['coh.paises'] === 'no' ? '' : benchEstado === 'cargando' ? ' · <b>Cargando los otros países desde Attio (hasta un minuto la primera vez)…</b>' : benchEstado === 'error' ? ' · <b>No se pudieron leer los otros países.</b>' : '';
   const alinear = op['coh.alinear'];
   const opsHtml =
     ops('coh.hito', [['reunion', 'Reunión'], ['consenso', 'Build consensus'], ['negociacion', 'Negociación'], ['firma', 'Firma']]) +
-    ops('coh.medida', [['pct', '%'], ['n', 'Deals'], ['arr', 'ARR']]) +
+    ops('coh.medida', [['pct', '% de deals'], ['arr', '% del ARR']]) +
     (cmp && alinear === 'inicio' ? '' : ops('coh.filas', [['semana', 'Semana'], ['quincena', 'Quincena'], ['mes', 'Mes']])) +
     (cmp ? '' : ops('coh.ver', [['sector', 'Público vs privado'], ['juntos', 'Todo junto'], ['origen', 'TGP vs equipo'], ['owner', 'Por owner']])) +
     ops('coh.paises', [['no', 'Sin países'], ['Colombia', 'Colombia'], ['Brasil', 'Brasil'], ['Argentina', 'Argentina'], ['México', 'México'], ['todos', 'Todos']]) +
-    (op['coh.paises'] !== 'no' ? ops('coh.alinear', [['hoy', 'Hoy en paralelo'], ['inicio', 'Desde el inicio de cada país']]) : '') +
-    (cmp && alinear === 'inicio' ? ops('coh.historia', [['anio', 'Primer año'], ['todo', 'Toda la historia']]) : '');
+    (op['coh.paises'] !== 'no' ? ops('coh.alinear', [['hoy', 'Hoy en paralelo'], ['inicio', 'Homologado desde su día 0']]) : '');
   const sub = cmp
-    ? (alinear === 'hoy' ? 'Chile y otros países en las mismas semanas, desde el lanzamiento de Chile' : 'cada país desde su primera reunión (Chile desde el lanzamiento), mes a mes')
+    ? (alinear === 'hoy' ? 'Chile y otros países en las mismas semanas, desde el lanzamiento de Chile' : `homologado: cada país desde su día 0 (el primer día que un deal tuvo primera reunión), en los mismos ${Math.floor((Date.now() - inicioPais('Chile')) / DIA)} días que lleva Chile`)
     : `cómo avanza cada grupo de deals según ${{ semana: 'la semana', quincena: 'la quincena', mes: 'el mes' }[op['coh.filas']]} en que entró · ${h.t.toLowerCase()} medido desde ${h.reloj === 'creado' ? 'la creación' : 'la primera reunión'}`;
   const cuerpo = cmp
     ? `<div class="coh-cmp"><div class="grafico" id="g-cmp-tri"></div><div class="coh-cmp-abajo"><div class="grafico" id="g-cmp-cur"></div><div class="grafico" id="g-cmp-ent"></div></div></div>`
     : `<div class="coh"><div class="grafico" id="g-coh-tri"></div><div class="coh-der"><div class="grafico" id="g-coh-cur"></div><div class="grafico" id="g-coh-mej"></div></div></div>`;
   const nota = cmp
-    ? `Cohorte = deals que entraron ese período (creación o primera reunión, la que sea antes). Celda: % que llegó a ${h.t} a esa edad ${desdeQue(h)}; rayada = provisional; tenue = menos de ${N_MIN_CELDA} deals. Otros países: sin nombres, solo con el filtro de sector. Colombia y Brasil se cargaron en masa a Attio en nov-2025: su avance antes de dic-2025 (filas con *) no es confiable.`
-    : `Celda: ${{ pct: `% de los deals de la cohorte que llegó a ${h.t} a esa edad (estimado contando los que aún no cumplen la edad)`, n: `cuántos deals de la cohorte llegaron a ${h.t} a esa edad`, arr: `ARR de los deals de la cohorte que llegaron a ${h.t} a esa edad` }[op['coh.medida']]}${h.reloj === 'reunion' ? ', contando desde su primera reunión' : ''}. Rayada: provisional. Tenue: menos de ${N_MIN_CELDA} deals. Fuera de los tiempos: ${fuera} deals creados ya en Build consensus o más.`;
+    ? `Cohorte = deals que entraron ese período (creación o primera reunión, la que sea antes). Celda: % ${deQue()} que llegó a ${h.t} a esa edad ${desdeQue(h)}; rayada = provisional; tenue = menos de ${N_MIN_CELDA} deals. Otros países: sin nombres, solo con el filtro de sector. Colombia y Brasil se cargaron en masa a Attio en nov-2025: su avance antes de dic-2025 (filas con *) no es confiable.`
+    : `Celda: ${porArr() ? `% del ARR que entró en la cohorte que llegó a ${h.t} a esa edad (los deals sin ARR no pesan)` : `% de los deals de la cohorte que llegó a ${h.t} a esa edad`} (estimado contando los que aún no cumplen la edad)${h.reloj === 'reunion' ? ', contando desde su primera reunión' : ''}. Rayada: provisional. Tenue: menos de ${N_MIN_CELDA} deals. Fuera de los tiempos: ${fuera} deals creados ya en Build consensus o más.`;
   return {
     html: `<div class="diapo una">${card('Cohortes', sub, opsHtml, cuerpo,
       `<p class="resumen" style="margin:8px 0 0">${titular}${estadoPaises}</p><p class="nota" style="margin-top:4px">${nota}</p>`)}</div>`,
@@ -1170,7 +1183,7 @@ function diapoCohortes() {
 }
 
 // Filas de cada panel. Normal y "hoy en paralelo": semanas (o quincenas o meses) desde el lanzamiento, más "Antes".
-// "Desde el inicio": meses desde el inicio de cada país (mes 1, mes 2…), iguales en número para todos los paneles.
+// Homologado: meses desde el día 0 de cada país (mes 1, mes 2…), los mismos que lleva Chile.
 function filasPanel(pn, LZ, alinear, nMeses) {
   if (alinear === 'inicio') {
     return [{ etq: 'Antes', antes: true, desde: -Infinity, hasta: pn.inicio },
@@ -1185,7 +1198,8 @@ function filasPanel(pn, LZ, alinear, nMeses) {
 function svgTriangulo(ancho, alto, panels, h, LZ, { meta = false, ent = false, alinear = null, vertical = false } = {}) {
   const medida = op['coh.medida'];
   const porMes = alinear === 'inicio';
-  const nMeses = porMes ? Math.min(op['coh.historia'] === 'anio' ? 12 : Infinity, Math.max(...panels.map((p) => Math.ceil((Date.now() - p.inicio) / (30.44 * DIA))))) : 0;
+  // Homologado: todos los países con los mismos meses que lleva Chile desde su día 0.
+  const nMeses = porMes ? Math.ceil((Date.now() - inicioPais('Chile')) / (30.44 * DIA)) : 0;
   const A = porMes ? Math.min(12, nMeses) : Math.min(13, Math.max(1, Math.ceil((Date.now() - LZ) / (7 * DIA)))); // tope: 13 semanas (un trimestre)
   const W = (a) => (porMes ? Math.round((a + 1) * 30.44) : (a + 1) * 7);
   const unidad = porMes ? 'mes' : 'semana', unidades = porMes ? 'meses' : 'semanas';
@@ -1203,14 +1217,14 @@ function svgTriangulo(ancho, alto, panels, h, LZ, { meta = false, ent = false, a
     });
     return { pn, filas };
   });
-  const valor = (r) => (medida === 'pct' ? r.p : medida === 'n' ? r.num : suma(r.si));
+  const valor = (r) => r.p;
   // Misma escala de color en todos los paneles, para que se puedan comparar.
-  const maxV = medida === 'pct' ? 1 : Math.max(1, ...datosP.flatMap((p) => p.filas.flatMap((c) => (c.f.antes ? [] : c.rs.filter((r) => r.obs).map(valor)))));
+  const maxV = 1;
   datosP.forEach(({ pn, filas }, pi) => {
     const x0 = vertical ? 0 : pi * (panelW + gap), y00 = vertical ? pi * (panelH + gap) : 0, gx = x0 + labelW;
     const rowH = Math.min(30, (panelH - headH - 4) / filas.length);
     const fs = Math.min(12, rowH * 0.46, cellW * 0.36);
-    if (panels.length > 1 || ent) out += `<text x="${x0}" y="${y00 + 14}" style="font-weight:700;font-size:14px;fill:${pn.color}">${esc(pn.t)} · ${pn.deals.length} deals${porMes ? ` <tspan style="font-weight:400;font-size:11.5px;fill:var(--tinta-3)">desde ${fechaCorta(pn.inicio)}</tspan>` : ''}</text>`;
+    if (panels.length > 1 || ent) out += `<text x="${x0}" y="${y00 + 14}" style="font-weight:700;font-size:14px;fill:${pn.color}">${esc(pn.t)} · ${pn.deals.length} deals${porMes ? ` <tspan style="font-weight:400;font-size:11.5px;fill:var(--tinta-3)">día 0: ${fechaCorta(pn.inicio)}</tspan>` : ''}</text>`;
     out += `<text x="${x0}" y="${y00 + headH - 6}" style="font-size:11px;fill:var(--tinta-3)">Cohorte</text><text x="${gx - 6}" y="${y00 + headH - 6}" text-anchor="end" style="font-size:10.5px;fill:var(--tinta-3)">${porMes ? 'mes' : 'sem'} →</text>`;
     for (let a = 0; a < A; a++) if (conTexto || a % 2 === 0) out += `<text x="${gx + a * cellW + cellW / 2}" y="${y00 + headH - 6}" text-anchor="middle" style="font-size:10.5px;fill:var(--tinta-3)">${a + 1}</text>`;
     if (meta) out += `<text x="${gx + A * cellW + 10}" y="${y00 + headH - 6}" style="font-size:11px;fill:var(--tinta-3)">deals · ARR · hoy</text>`;
@@ -1219,12 +1233,12 @@ function svgTriangulo(ancho, alto, panels, h, LZ, { meta = false, ent = false, a
       const nombreC = `${c.f.antes ? 'antes del inicio' : c.f.etq}${c.f.sub ? ` (${c.f.sub})` : ''}${panels.length > 1 ? ` · ${pn.t}` : ''}`;
       out += `<g opacity="${c.f.antes ? 0.45 : c.f.dudoso ? 0.6 : 1}"><text x="${x0}" y="${y + rowH / 2 + 4}" style="font-size:${Math.min(12, rowH * 0.55)}px;font-weight:600;fill:var(--tinta)" ${dato(`<b>Cohorte ${nombreC}</b><br>${c.ds.length} deals · ${usd(suma(c.ds))}${c.f.antes ? '<br>Entraron antes del inicio: no entran en curvas ni indicadores' : ''}${c.f.dudoso ? '<br>Cargados en masa a Attio en nov-2025: su avance por etapa no es confiable' : ''}${pn.pais && pn.pais !== 'Chile' ? '' : '<small>Doble clic para ver los deals</small>'}`, `Cohorte ${nombreC}`, 'Deals de ese período', pn.pais && pn.pais !== 'Chile' ? null : c.ds)}>${c.f.etq}${c.f.dudoso ? '*' : ''} <tspan style="fill:var(--tinta-3);font-weight:400">${c.f.sub ? c.f.sub + ' · ' : ''}${c.ds.length}</tspan></text>`;
       c.rs.forEach((r, a) => {
-        if (!r.n || !r.obs) return;
-        const cx = gx + a * cellW, v = valor(r), chico = r.n < N_MIN_CELDA;
+        if (!r.n || !r.obs || r.p == null) return;
+        const cx = gx + a * cellW, v = valor(r), chico = (medida === 'arr' ? r.nArr : r.n) < N_MIN_CELDA;
         const k = Math.max(0.06, (v ?? 0) / maxV) * (chico ? 0.45 : 1);
-        const txt = medida === 'pct' ? pct(v) : medida === 'n' ? v : v ? usd(v).replace('USD ', '') : '0';
+        const txt = pct(v);
         const edad = `${a + 1} ${a ? unidades : unidad}`;
-        const tip = `<b>Cohorte ${nombreC} · ${edad}</b><br>${h.t} a ${edad} ${desdeQue(h)}: ${pct(r.p)}${r.si.length ? ` · ${r.num} deal${r.num > 1 ? 's' : ''}, ${usd(suma(r.si))}` : ''}<br>Base: ${r.n} deals${r.cens ? ` · provisional: ${r.cens} aún no cumple${r.cens > 1 ? 'n' : ''} esa edad` : ''}${chico ? `<br>Menos de ${N_MIN_CELDA} deals: tómalo con cuidado` : ''}${r.sinReu && h.reloj === 'reunion' ? `<br>${r.sinReu} sin reunión todavía (no cuentan${r.sinReuAbiertos ? `; ${r.sinReuAbiertos} siguen abiertos` : ''})` : ''}${r.fuera ? `<br>${r.fuera} creados ya en Build consensus o más (fuera)` : ''}${pn.pais && pn.pais !== 'Chile' ? '' : '<small>Doble clic para ver los que llegaron</small>'}`;
+        const tip = `<b>Cohorte ${nombreC} · ${edad}</b><br>${h.t} a ${edad} ${desdeQue(h)}: <b>${pct(r.p)} ${medida === 'arr' ? 'del ARR' : 'de los deals'}</b><br>${r.num === 1 ? 'Llegó 1 deal' : `Llegaron ${r.num} deals`} (${usd(r.arrSi)} de ${usd(r.arrBase)} de ARR)<br>Base: ${r.n} deals${medida === 'arr' ? `, ${r.nArr} con ARR` : ''}${r.cens ? ` · provisional: ${r.cens} aún no cumple${r.cens > 1 ? 'n' : ''} esa edad` : ''}${chico ? `<br>Menos de ${N_MIN_CELDA} deals: tómalo con cuidado` : ''}${r.sinReu && h.reloj === 'reunion' ? `<br>${r.sinReu} sin reunión todavía (no cuentan${r.sinReuAbiertos ? `; ${r.sinReuAbiertos} siguen abiertos` : ''})` : ''}${r.fuera ? `<br>${r.fuera} creados ya en Build consensus o más (fuera)` : ''}${pn.pais && pn.pais !== 'Chile' ? '' : '<small>Doble clic para ver los que llegaron</small>'}`;
         out += `<rect x="${cx + 1}" y="${y + 1}" width="${Math.max(1, cellW - 2)}" height="${Math.max(1, rowH - 2)}" rx="3" fill="${pn.color}" fill-opacity="${(0.1 + 0.85 * k).toFixed(2)}" ${dato(tip, `Cohorte ${nombreC} · llegaron a ${h.t} en ${edad}`, `${r.num} de ${r.n} deals`, pn.pais && pn.pais !== 'Chile' ? null : r.si)}/>`;
         if (r.cens) out += `<rect x="${cx + 1}" y="${y + 1}" width="${Math.max(1, cellW - 2)}" height="${Math.max(1, rowH - 2)}" rx="3" fill="url(#raya-coh)" style="pointer-events:none"/>`;
         if (conTexto && rowH >= 12) out += `<text x="${cx + cellW / 2}" y="${y + rowH / 2 + fs * 0.36}" text-anchor="middle" style="font-size:${fs}px;font-weight:600;pointer-events:none;fill:${k > 0.55 ? '#0A100C' : chico ? 'var(--tinta-3)' : 'var(--tinta)'}">${txt}</text>`;
@@ -1266,11 +1280,11 @@ function svgCurvas(ancho, alto, series, h, maxW, titulo) {
   if (sobra > 0) for (const e of etiquetas) e.y = Math.max(m.t, e.y - sobra);
   const pasoX = maxW > 16 ? 4 : 2;
   return `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Curvas acumuladas por edad">
-    <text x="0" y="12" style="font-weight:700;font-size:13px;fill:var(--tinta)">${titulo ?? `% que llegó a ${h.t}, por semanas ${desdeQue(h)}`}</text>
+    <text x="0" y="12" style="font-weight:700;font-size:13px;fill:var(--tinta)">${titulo ?? `% ${deQue()} que llegó a ${h.t}, por semanas ${desdeQue(h)}`}</text>
     ${[0, 0.25, 0.5, 0.75, 1].map((p) => `<line class="eje" x1="${m.l}" x2="${m.l + Wd}" y1="${y(p)}" y2="${y(p)}" stroke-dasharray="${p ? '2 4' : ''}"/><text x="${m.l - 6}" y="${y(p) + 4}" text-anchor="end" style="font-size:10.5px">${p * 100}%</text>`).join('')}
     ${Array.from({ length: Math.floor(maxW / pasoX) + 1 }, (_, i) => i * pasoX).map((w) => `<text x="${x(w)}" y="${alto - 6}" text-anchor="middle" style="font-size:10.5px">${w ? `sem ${w}` : '0'}</text>`).join('')}
     ${con.map((s) => `<path d="M${x(0)},${y(0)} ${s.pts.map((p) => `L${x(p.w)},${y(p.r.p)}`).join(' ')}" fill="none" stroke="${s.color}" stroke-width="${s.dash ? 2 : 3}" ${s.dash ? `stroke-dasharray="${s.dash}"` : ''} stroke-linejoin="round"/>
-      ${s.pts.map((p) => `<circle cx="${x(p.w)}" cy="${y(p.r.p)}" r="${s.dash ? 4 : 5}" fill="${p.r.cens ? 'var(--tarjeta)' : s.color}" stroke="${s.color}" stroke-width="2" ${dato(`<b>${esc(s.nombre)} · ${p.w} semana${p.w > 1 ? 's' : ''}</b><br>${pct(p.r.p)} llegó a ${h.t} · ${p.r.num} de ${p.r.n} deals${p.r.cens ? `<br>Provisional: ${p.r.cens} aún no cumplen esa edad` : ''}${s.sinLista ? '' : '<small>Doble clic para ver los que llegaron</small>'}`, `${s.nombre} · ${h.t} en ${p.w} semanas`, `${p.r.num} de ${p.r.n}`, s.sinLista ? null : p.r.si)}/>`).join('')}`).join('')}
+      ${s.pts.map((p) => `<circle cx="${x(p.w)}" cy="${y(p.r.p)}" r="${s.dash ? 4 : 5}" fill="${p.r.cens ? 'var(--tarjeta)' : s.color}" stroke="${s.color}" stroke-width="2" ${dato(`<b>${esc(s.nombre)} · ${p.w} semana${p.w > 1 ? 's' : ''}</b><br>${pct(p.r.p)} ${deQue()} llegó a ${h.t} · ${p.r.num} de ${p.r.n} deals${p.r.arr ? ` (${usd(p.r.arrSi)} de ${usd(p.r.arrBase)})` : ''}${p.r.cens ? `<br>Provisional: ${p.r.cens} aún no cumplen esa edad` : ''}${s.sinLista ? '' : '<small>Doble clic para ver los que llegaron</small>'}`, `${s.nombre} · ${h.t} en ${p.w} semanas`, `${p.r.num} de ${p.r.n}`, s.sinLista ? null : p.r.si)}/>`).join('')}`).join('')}
     ${etiquetas.map(({ s, y: yy }) => `<text x="${x(s.pts.at(-1).w) + 8}" y="${yy + 4}" style="font-size:11.5px;font-weight:${s.dash ? 500 : 700};fill:${s.color}">${esc(s.nombre)} ${pct(s.pts.at(-1).r.p)}</text>`).join('')}
     ${todas.filter((s) => !s.pts.length && s.aviso).map((s, i) => `<text x="${m.l + Wd}" y="${m.t + H - 8 - i * 14}" text-anchor="end" style="font-size:10.5px;fill:${s.color}">${esc(s.aviso)}</text>`).join('')}
     ${!con.length ? `<text x="${m.l + Wd / 2}" y="${m.t + H / 2}" text-anchor="middle" style="fill:var(--tinta-3)">Muy pocos deals con estos filtros</text>` : ''}
@@ -1279,7 +1293,7 @@ function svgCurvas(ancho, alto, series, h, maxW, titulo) {
 
 // Curvas de la comparación: Chile contra cada país, con los deals del mismo período ("hoy") o de sus primeros meses ("inicio").
 function svgCurvasPaises(ancho, alto, paneles, h, LZ, alinear) {
-  const diasCl = Math.floor((Date.now() - LZ) / DIA);
+  const diasCl = Math.floor((Date.now() - (alinear === 'hoy' ? LZ : inicioPais('Chile'))) / DIA);
   const series = paneles.map((pn) => {
     const desde = alinear === 'hoy' ? LZ : pn.inicio, hasta = alinear === 'hoy' ? Infinity : pn.inicio + diasCl * DIA;
     const ds = pn.deals.filter((d) => { const t = perfil(d, true).t0; return t >= desde && t < hasta; });
@@ -1289,13 +1303,13 @@ function svgCurvasPaises(ancho, alto, paneles, h, LZ, alinear) {
     return { nombre: `${pn.t}${dudoso ? '*' : ''} (n=${av.n})`, color: pn.color, dash: pn.pais === 'Chile' ? null : '6 4', av, nMin, sinLista: pn.pais !== 'Chile', aviso: `${pn.t}: muy pocos deals para la curva (n=${av.n})` };
   });
   const maxW = Math.max(4, Math.ceil(diasCl / 7) + (alinear === 'hoy' ? 0 : 4));
-  const titulo = alinear === 'hoy' ? `% que llegó a ${h.t}, deals que entraron desde el ${fechaCorta(LZ)}` : `% que llegó a ${h.t}, deals de los primeros ${Math.round(diasCl / 30.44)} meses de cada país`;
+  const titulo = alinear === 'hoy' ? `% ${deQue()} que llegó a ${h.t}, deals que entraron desde el ${fechaCorta(LZ)}` : `% ${deQue()} que llegó a ${h.t}, deals de los primeros ${diasCl} días de cada país desde su día 0`;
   return svgCurvas(ancho, alto, series, h, maxW, titulo);
 }
 
 // Entrada de deals acumulada: cuántos deals entraron y cuántos llegaron al hito, por días desde el inicio (o desde el 17-ago).
 function svgEntrada(ancho, alto, paneles, h, LZ, alinear) {
-  const ahora = Date.now(), diasCl = Math.floor((ahora - LZ) / DIA);
+  const ahora = Date.now(), diasCl = Math.floor((ahora - (alinear === 'hoy' ? LZ : inicioPais('Chile'))) / DIA);
   const ser = paneles.map((pn) => {
     const ini = alinear === 'hoy' ? LZ : pn.inicio;
     const dur = Math.floor((ahora - ini) / DIA);
@@ -1303,27 +1317,26 @@ function svgEntrada(ancho, alto, paneles, h, LZ, alinear) {
     const llegaron = pn.deals.map((d) => { const p = perfil(d, true); return p.t0 >= ini && !p.avanzado ? p.at(h.k) : null; }).filter((t) => t != null).map((t) => Math.floor((t - ini) / DIA)).sort((a, b) => a - b);
     return { pn, dur, ts, llegaron };
   });
-  const maxD = alinear === 'hoy' ? diasCl : Math.min(Math.max(...ser.map((s) => s.dur)), Math.max(365, diasCl * 2));
+  const maxD = diasCl; // homologado: mismos días que lleva Chile
   const cuenta = (arr, d) => { let n = 0; for (const t of arr) { if (t <= d) n++; else break; } return n; };
   const maxV = Math.max(10, ...ser.map((s) => cuenta(s.ts, Math.min(maxD, s.dur))));
   const m = { t: 26, r: 150, b: 22, l: 40 }, Wd = ancho - m.l - m.r, H = alto - m.t - m.b;
   const x = (d) => m.l + (d / maxD) * Wd, y = (v) => m.t + H - (v / maxV) * H;
   const paso = Math.max(1, Math.round(maxD / 8 / 7)) * 7;
   const marca = Math.min(diasCl, maxD);
-  let out = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Deals que entraron, acumulado"><text x="0" y="12" style="font-weight:700;font-size:13px;fill:var(--tinta)">Deals que entraron, acumulado ${alinear === 'hoy' ? `desde el ${fechaCorta(LZ)}` : 'desde el inicio de cada país'}</text>`;
+  let out = `<svg viewBox="0 0 ${ancho} ${alto}" role="img" aria-label="Deals que entraron, acumulado"><text x="0" y="12" style="font-weight:700;font-size:13px;fill:var(--tinta)">Deals que entraron, acumulado ${alinear === 'hoy' ? `desde el ${fechaCorta(LZ)}` : 'desde el día 0 de cada país (mismos días que lleva Chile)'}</text>`;
   for (let i = 0; i <= 4; i++) { const v = Math.round((maxV / 4) * i); out += `<line class="eje" x1="${m.l}" x2="${m.l + Wd}" y1="${y(v)}" y2="${y(v)}" stroke-dasharray="${i ? '2 4' : ''}"/><text x="${m.l - 6}" y="${y(v) + 4}" text-anchor="end" style="font-size:10.5px">${v}</text>`; }
   for (let d = 0; d <= maxD; d += paso) out += `<text x="${x(d)}" y="${alto - 6}" text-anchor="middle" style="font-size:10.5px">${d ? `sem ${d / 7}` : '0'}</text>`;
-  if (alinear === 'inicio') out += `<line x1="${x(marca)}" x2="${x(marca)}" y1="${m.t}" y2="${m.t + H}" stroke="var(--tinta-3)" stroke-dasharray="3 3"/><text x="${x(marca) + 4}" y="${m.t + 10}" style="font-size:10.5px;fill:var(--tinta-2)">Chile hoy</text>`;
   const etq = [];
   for (const s of ser) {
     const fin = Math.min(maxD, s.dur);
     let dPath = `M${x(0)},${y(0)}`, n = 0;
     for (const t of s.ts) { if (t > fin) break; n++; dPath += ` H${x(t)} V${y(n)}`; }
     dPath += ` H${x(fin)}`;
-    const enMarca = cuenta(s.ts, marca), llMarca = cuenta(s.llegaron, marca);
+    const diaP = Math.min(marca, s.dur), enMarca = cuenta(s.ts, diaP), llMarca = cuenta(s.llegaron, diaP); // un país más nuevo que Chile llega hasta su día de hoy
     out += `<path d="${dPath}" fill="none" stroke="${s.pn.color}" stroke-width="${s.pn.pais === 'Chile' ? 3 : 2}" ${s.pn.pais === 'Chile' ? '' : 'stroke-dasharray="6 4"'}/>`;
-    out += `<circle cx="${x(Math.min(marca, fin))}" cy="${y(cuenta(s.ts, Math.min(marca, fin)))}" r="7" fill="${s.pn.color}" fill-opacity=".9" ${dato(`<b>${s.pn.t} · ${alinear === 'hoy' ? 'hoy' : `día ${marca} desde su inicio`}</b><br>${enMarca} deals entraron · ${llMarca} llegaron a ${h.t}${s.dur < marca ? `<br>${s.pn.t} lleva solo ${s.dur} días` : ''}`)}/>`;
-    etq.push({ s, y: y(cuenta(s.ts, fin)), txt: `${s.pn.t}: ${enMarca} · ${llMarca} en ${h.t === 'Build consensus' ? 'BC' : h.t.toLowerCase()}${alinear === 'inicio' && s.pn.pais !== 'Chile' ? ` al día ${marca}` : ''}` });
+    out += `<circle cx="${x(Math.min(marca, fin))}" cy="${y(cuenta(s.ts, Math.min(marca, fin)))}" r="7" fill="${s.pn.color}" fill-opacity=".9" ${dato(`<b>${s.pn.t} · ${alinear === 'hoy' ? 'hoy' : `día ${diaP} desde su día 0`}</b><br>${enMarca} deals entraron · ${llMarca} llegaron a ${h.t}${s.dur < marca ? `<br>${s.pn.t} lleva solo ${s.dur} días` : ''}`)}/>`;
+    etq.push({ s, y: y(cuenta(s.ts, fin)), txt: `${s.pn.t}: ${enMarca} · ${llMarca} en ${h.t === 'Build consensus' ? 'BC' : h.t.toLowerCase()}${alinear === 'inicio' && s.pn.pais !== 'Chile' ? ` al día ${diaP}${diaP < marca ? ' (hoy)' : ''}` : ''}` });
   }
   etq.sort((a, b) => a.y - b.y);
   for (let i = 1; i < etq.length; i++) etq[i].y = Math.max(etq[i].y, etq[i - 1].y + 14);
@@ -1352,7 +1365,7 @@ function svgMejoramos(ancho, alto, post, LZ) {
         const semanasVentana = Math.max(1, (hasta - desde) / (7 * DIA)); // la semana en curso cuenta solo por los días que van
         return { i, v: win.length / semanasVentana, n: win.length, s, win, solido: s.hasta <= ahora };
       }
-      const r = avance(win, f.h).en(f.W);
+      const r = avance(win, f.h, false, false).en(f.W); // ¿Mejoramos? siempre en % de deals
       if (r.n < 10) return null;
       return { i, v: r.p, n: r.n, r, s, win, solido: r.cens <= 0.1 * r.n && r.n >= 15, ci: wilson(r.p, r.n) };
     }).filter(Boolean);
