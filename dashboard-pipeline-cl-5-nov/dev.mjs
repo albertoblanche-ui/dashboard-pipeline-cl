@@ -11,13 +11,14 @@ for (const l of existsSync(join(raiz, '.env.local')) ? readFileSync(join(raiz, '
 }
 const { GET } = await import('./api/data.js');
 const { GET: GET_JAIME } = await import('./api/jaime.js');
+const { GET: GET_PAISES } = await import('./api/paises.js');
 const tipos = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.svg': 'image/svg+xml' };
 const puerto = Number(process.env.PORT ?? 3000);
 
 createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${puerto}`);
-  if (url.pathname === '/api/data' || url.pathname === '/api/jaime') {
-    const r = await (url.pathname === '/api/jaime' ? GET_JAIME : GET)(new Request(url, { headers: req.headers }));
+  if (url.pathname === '/api/data' || url.pathname === '/api/jaime' || url.pathname === '/api/paises') {
+    const r = await ({ '/api/jaime': GET_JAIME, '/api/paises': GET_PAISES }[url.pathname] ?? GET)(new Request(url, { headers: req.headers }));
     res.writeHead(r.status, { 'Content-Type': 'application/json' });
     return res.end(await r.text());
   }

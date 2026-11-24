@@ -3,7 +3,7 @@ import { REGIONES } from './regiones.js';
 import { UBICACIONES } from './ubicaciones.js';
 import { createHash } from 'node:crypto';
 import {
-  ATTIO, CLP_POR_USD, DIAS_ESPERA_CLIENTE, DIAS_ESPERA_MAX, DIAS_GRACIA_NEXT_STEP, DIAS_PELOTA_CLIENTE,
+  ATTIO, CLP_POR_USD, DIAS_ESPERA_CLIENTE, DIAS_ESPERA_MAX, DIAS_GRACIA_NEXT_STEP, DIAS_NS_SIN_FECHA, DIAS_NUEVO_SIN_NS, DIAS_PELOTA_CLIENTE,
   DIAS_PERDIDO_SIN_ACTIVIDAD, DIAS_SIN_ACTIVIDAD, DIAS_SUBIO, ESPERAS, SIN_RESPUESTA, ETAPAS, ETAPAS_CERRADAS, ETAPAS_FIRMADAS,
   META_ARR_USD, META_FECHA, MUST_WIN, PAISES, TICKET_MINIMO_USD,
 } from './config.js';
@@ -53,29 +53,34 @@ export function pelotaPorTexto(txt) {
 const fechaCorta = (f) => `${f.getUTCDate()}-${['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'][f.getUTCMonth()]}`;
 const plural = (n) => (n === 1 ? '1 día' : `${n} días`);
 
-// Ritmo del deal (regla del 9-nov, en config.js): 'avanza', 'espera' o 'estancado', con el motivo en una línea.
-export function ritmoDeal({ etapa, nextStep, nextStepEn, fechaNS, ultimaAccion, pelota, diasInactivo, ultimoAvance }, ahora) {
+// Ritmo del deal (regla del 9-nov, ajustada el 23-nov; en config.js): 'avanza', 'espera', 'alerta' o 'estancado', con el motivo en una línea.
+// 'alerta' (amarillo): next step recién vencido (dentro del margen) o deal nuevo que todavía no tiene next step.
+export function ritmoDeal({ etapa, nextStep, nextStepEn, fechaNS, ultimaAccion, pelota, diasInactivo, ultimoAvance, creado }, ahora) {
   const hace = (f) => dias(f, ahora);
   const reciente = (ultimaAccion ?? '').split(/\n/)[0];
-  // 1. Hay un próximo paso con fecha que todavía no pasa.
-  if (fechaNS && hace(fechaNS) <= 0) return { estado: 'avanza', motivo: `Next step el ${fechaCorta(fechaNS)}` };
-  // 2. Subió de etapa hace poco.
+  // 1. Avanzó: su último cambio de etapa fue hacia adelante, hace DIAS_SUBIO días o menos (el navegador lo pinta verde).
   if (ultimoAvance && hace(ultimoAvance.fecha) <= DIAS_SUBIO) {
-    return { estado: 'avanza', motivo: `Subió a ${ultimoAvance.a} hace ${plural(hace(ultimoAvance.fecha))}` };
+    return { estado: 'avanza', motivo: `Avanzó a ${ultimoAvance.a} hace ${plural(hace(ultimoAvance.fecha))}` };
   }
+  // 2. Hay un próximo paso con fecha que todavía no pasa.
+  if (fechaNS && hace(fechaNS) <= 0) return { estado: 'avanza', motivo: `Next step el ${fechaCorta(fechaNS)}` };
   // 3. Lo último registrado dice que el cliente no responde.
   if (SIN_RESPUESTA.test(reciente)) return { estado: 'estancado', motivo: 'El cliente no responde' };
   // 4. Espera justificada, mientras haya algo registrado en Attio en los últimos DIAS_ESPERA_MAX días.
   const espera = etapa === 'PoC execution'
     ? 'Piloto en curso'
     : ESPERAS.find(([re]) => re.test(nextStep ?? '') || re.test(reciente))?.[1];
+  // Regla 8 (23-nov): si el next step es nuestro y venció más allá del margen, la espera no lo salva (salvo el piloto).
+  const nuestroVencido = fechaNS && hace(fechaNS) > DIAS_GRACIA_NEXT_STEP && pelota !== 'Cliente' && espera !== 'Piloto en curso';
+  if (espera && nuestroVencido) return { estado: 'estancado', motivo: `Next step vencido hace ${plural(hace(fechaNS))} (${espera.toLowerCase()})` };
   if (espera && diasInactivo <= DIAS_ESPERA_MAX) return { estado: 'espera', motivo: espera };
   if (pelota === 'Cliente' && nextStepEn && hace(nextStepEn) <= DIAS_ESPERA_CLIENTE) {
     return { estado: 'espera', motivo: `Esperando al cliente hace ${plural(hace(nextStepEn))}` };
   }
-  // 5. Semana de gracia: next step recién vencido o recién escrito sin fecha.
-  if (fechaNS && hace(fechaNS) <= DIAS_GRACIA_NEXT_STEP) return { estado: 'avanza', motivo: `Next step del ${fechaCorta(fechaNS)}, recién vencido` };
-  if (nextStep && !fechaNS && nextStepEn && hace(nextStepEn) <= DIAS_GRACIA_NEXT_STEP) return { estado: 'avanza', motivo: 'Next step nuevo (sin fecha)' };
+  // 5. Margen: next step recién vencido (amarillo) o recién escrito sin fecha (al día); deal nuevo sin next step (amarillo).
+  if (fechaNS && hace(fechaNS) <= DIAS_GRACIA_NEXT_STEP) return { estado: 'alerta', motivo: `Next step vencido hace ${plural(hace(fechaNS))}` };
+  if (nextStep && !fechaNS && nextStepEn && hace(nextStepEn) <= DIAS_NS_SIN_FECHA) return { estado: 'avanza', motivo: 'Next step nuevo (sin fecha)' };
+  if (!nextStep && creado && hace(creado) <= DIAS_NUEVO_SIN_NS) return { estado: 'alerta', motivo: 'Nuevo, falta next step' };
   // 6. Todo lo demás.
   if (espera) return { estado: 'estancado', motivo: `${espera}, sin novedades hace ${plural(diasInactivo)}` };
   if (!nextStep) return { estado: 'estancado', motivo: 'Sin next step' };
@@ -146,7 +151,7 @@ export function construirDashboard(raw, ahora = new Date()) {
     const lento = abierto && info?.limite != null && diasEtapa > info.limite;
     const ultimo = todos[todos.length - 1];
     const ritmo = abierto
-      ? ritmoDeal({ etapa, nextStep, nextStepEn, fechaNS, ultimaAccion: texto(d, 'last_action'), pelota, diasInactivo, ultimoAvance: ultimo?.avance ? ultimo : null }, ahora)
+      ? ritmoDeal({ etapa, nextStep, nextStepEn, fechaNS, ultimaAccion: texto(d, 'last_action'), pelota, diasInactivo, ultimoAvance: ultimo?.avance ? ultimo : null, creado: d.created_at }, ahora)
       : null;
     const estancado = ritmo?.estado === 'estancado';
     const candidatoPerdido =

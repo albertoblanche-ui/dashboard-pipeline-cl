@@ -9,16 +9,24 @@ export const DIAS_SIN_ACTIVIDAD = 7;
 export const DIAS_PELOTA_CLIENTE = 3;
 export const DIAS_PERDIDO_SIN_ACTIVIDAD = 14;
 
-// Regla de estancado (9-nov-2026, Beto; sin IA). Estancado = el deal perdió el ritmo, no "muchos días en la etapa".
-//   Avanza:    next step con fecha futura o vencida hace DIAS_GRACIA_NEXT_STEP días o menos; o subió de etapa
-//              hace DIAS_SUBIO días o menos; o next step sin fecha escrito hace DIAS_GRACIA_NEXT_STEP días o menos.
+// Regla de estado (9-nov-2026, Beto; revisada el 23-nov). Estancado = el deal perdió el ritmo, no "muchos días en la etapa".
+//   Avanzó (verde): su último cambio de etapa fue hacia adelante, hace DIAS_SUBIO días o menos.
+//   Al día:    next step con fecha de hoy en adelante; o next step escrito sin fecha hace DIAS_NS_SIN_FECHA días o menos.
 //   En espera: espera justificada (piloto en curso, licitación, LOI o contrato en firma, kickoff, pausa) con algo
-//              registrado en Attio hace DIAS_ESPERA_MAX días o menos; o la pelota en el cliente hace DIAS_ESPERA_CLIENTE
+//              registrado en Attio hace DIAS_ESPERA_MAX días o menos, salvo que el next step sea nuestro y esté vencido
+//              más allá del margen (excepto el piloto en curso); o la pelota en el cliente hace DIAS_ESPERA_CLIENTE
 //              días o menos.
+//   Atención (amarillo, 'alerta'): next step vencido hace DIAS_GRACIA_NEXT_STEP días o menos; o deal creado hace
+//              DIAS_NUEVO_SIN_NS días o menos que todavía no tiene next step.
 //   Estancado: el cliente no responde (según la última entrada de "last action") y no hay next step con fecha futura;
 //              o todo el resto (next step vencido, sin fecha o sin next step, y nada que lo justifique).
 // Los días en la etapa (límite) quedan solo como dato ("lento"): no pintan rojo.
-export const DIAS_GRACIA_NEXT_STEP = 7;
+// Revisión con Beto, 23-nov: el next step vencido tiene 3 días de margen (amarillo, "vencido hace X días") y desde el 4° es rojo.
+export const DIAS_GRACIA_NEXT_STEP = 3;
+// Next step escrito sin fecha: cuenta como al día los primeros 7 días (regla del 9-nov, sin cambios).
+export const DIAS_NS_SIN_FECHA = 7;
+// Deal recién creado sin next step: amarillo "Nuevo, falta next step" hasta 5 días; desde el 6° es rojo (23-nov).
+export const DIAS_NUEVO_SIN_NS = 5;
 export const DIAS_SUBIO = 14;
 export const DIAS_ESPERA_MAX = 30;
 export const DIAS_ESPERA_CLIENTE = 14;
@@ -63,6 +71,15 @@ export const PAISES = [
   { nombre: 'Colombia', attio: 'Colombia', inicio: '2025-01-22' },
   { nombre: 'Brasil', attio: 'Brazil', inicio: '2025-07-04' },
   { nombre: 'Argentina', attio: 'Argentina', inicio: '2026-08-31' },
+];
+
+// Diapositiva 11 (cohortes): países con que se compara Chile. Se compara por edad del deal, no por día 0:
+// Colombia y Brasil se cargaron en masa a Attio en nov-2025, así que se usan sus deals creados desde abril de 2026.
+export const BENCH_PAISES = [
+  { nombre: 'Colombia', attio: 'Colombia' },
+  { nombre: 'Brasil', attio: 'Brazil' },
+  { nombre: 'Argentina', attio: 'Argentina' },
+  { nombre: 'México', attio: 'Mexico' },
 ];
 
 // Equipo Chile: se buscan en Attio por correo.
