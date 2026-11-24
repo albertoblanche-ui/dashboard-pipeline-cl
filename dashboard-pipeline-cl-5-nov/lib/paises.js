@@ -10,12 +10,19 @@ let enCurso = null;
 
 async function api(key, method, path, body) {
   for (let intento = 0; intento < 6; intento++) {
-    const r = await fetch(BASE + path, {
-      method,
-      headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    if (r.status === 429) {
+    let r;
+    try {
+      r = await fetch(BASE + path, {
+        method,
+        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+    } catch (e) {
+      // En Vercel a veces se corta la conexión ("terminated"): se reintenta.
+      await new Promise((ok) => setTimeout(ok, 500 * (intento + 1)));
+      continue;
+    }
+    if (r.status === 429 || r.status >= 500) {
       await new Promise((ok) => setTimeout(ok, 400 * (intento + 1)));
       continue;
     }
@@ -40,7 +47,7 @@ async function leer(key) {
   let i = 0;
   const hist = new Array(deals.length);
   await Promise.all(
-    Array.from({ length: 30 }, async () => {
+    Array.from({ length: 12 }, async () => {
       while (i < deals.length) {
         const j = i++;
         const { data } = await api(key, 'GET', `/objects/opportunities/records/${deals[j].d.id.record_id}/attributes/deal_stage/values?show_historic=true`);
